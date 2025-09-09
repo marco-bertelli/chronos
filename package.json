@@ -1,6 +1,6 @@
 {
-  "name": "agenda",
-  "version": "5.0.1",
+  "name": "chronos-job-scheduler",
+  "version": "1.0.1",
   "description": "Light weight job scheduler for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,10 +22,10 @@
     "lint-fix": "eslint src --fix",
     "mocha": "mocha --reporter spec -b",
     "mocha-coverage": "nyc mocha --reporter spec -b",
-    "mocha-debug": "DEBUG=agenda:**,-agenda:internal:** mocha --reporter spec -b",
-    "mocha-debug-internal": "DEBUG=agenda:internal:** mocha --reporter spec -b",
-    "mocha-debug-all": "DEBUG=agenda:** mocha --reporter spec -b",
-    "docs": "typedoc --out docs/agenda/6.x src/index.ts"
+    "mocha-debug": "DEBUG=chronos:**,-chronos:internal:** mocha --reporter spec -b",
+    "mocha-debug-internal": "DEBUG=chronos:internal:** mocha --reporter spec -b",
+    "mocha-debug-all": "DEBUG=chronos:** mocha --reporter spec -b",
+    "docs": "typedoc --out docs/chronos/6.x src/index.ts"
   },
   "config": {
     "blanket": {
@@ -35,7 +35,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/hokify/agenda"
+    "url": "git://github.com/marco-bertelli/chronos"
   },
   "keywords": [
     "job",
@@ -45,10 +45,10 @@
     "scheduler",
     "runner"
   ],
-  "author": "Simon Tretter <simon.tretter@hokify.com>",
+  "author": "Simon Tretter, Maintained by Marco Bertelli",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hokify/agenda/issues"
+    "url": "https://github.com/marco-bertelli/chronos/issues"
   },
   "dependencies": {
     "cron-parser": "^4.5.0",
@@ -61,7 +61,6 @@
   "devDependencies": {
     "eslint": "^8.21.0",
     "prettier": "^2.7.1",
-    "@hokify/eslint-config": "^2.3.2",
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
     "@types/chai": "^4.3.1",
     "@types/debug": "^4.1.7",

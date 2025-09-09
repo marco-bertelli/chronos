@@ -10,12 +10,12 @@ import * as delay from 'delay';
 import * as sinon from 'sinon';
 import { fail } from 'assert';
 import { Job } from '../src/Job';
-import { Agenda } from '../src';
+import { Chronos } from '../src';
 import { mockMongo } from './helpers/mock-mongodb';
 import someJobDefinition from './fixtures/someJobDefinition';
 
-// Create agenda instances
-let agenda: Agenda;
+// Create chronos instances
+let chronos: Chronos;
 // connection string to mongodb
 let mongoCfg: string;
 // mongo db connection db instance
@@ -23,14 +23,14 @@ let mongoDb: Db;
 
 const clearJobs = async () => {
 	if (mongoDb) {
-		await mongoDb.collection('agendaJobs').deleteMany({});
+		await mongoDb.collection('chronosJobs').deleteMany({});
 	}
 };
 
 // Slow timeouts for Travis
 const jobTimeout = 500;
 const jobType = 'do work';
-const jobProcessor = () => {};
+const jobProcessor = () => { };
 
 describe('Job', () => {
 	beforeEach(async () => {
@@ -41,17 +41,17 @@ describe('Job', () => {
 		}
 
 		return new Promise(resolve => {
-			agenda = new Agenda(
+			chronos = new Chronos(
 				{
 					mongo: mongoDb
 				},
 				async () => {
 					await delay(50);
 					await clearJobs();
-					agenda.define('someJob', jobProcessor);
-					agenda.define('send email', jobProcessor);
-					agenda.define('some job', jobProcessor);
-					agenda.define(jobType, jobProcessor);
+					chronos.define('someJob', jobProcessor);
+					chronos.define('send email', jobProcessor);
+					chronos.define('some job', jobProcessor);
+					chronos.define(jobType, jobProcessor);
 					return resolve();
 				}
 			);
@@ -60,14 +60,14 @@ describe('Job', () => {
 
 	afterEach(async () => {
 		await delay(50);
-		await agenda.stop();
+		await chronos.stop();
 		await clearJobs();
 		// await mongoClient.disconnect();
 		// await jobs._db.close();
 	});
 
 	describe('repeatAt', () => {
-		const job = new Job(agenda, { name: 'demo', type: 'normal' });
+		const job = new Job(chronos, { name: 'demo', type: 'normal' });
 		it('sets the repeat at', () => {
 			job.repeatAt('3:30pm');
 			expect(job.attrs.repeatAt).to.equal('3:30pm');
@@ -79,7 +79,7 @@ describe('Job', () => {
 
 	describe('toJSON', () => {
 		it('failedAt', () => {
-			let job = new Job(agenda, {
+			let job = new Job(chronos, {
 				name: 'demo',
 				type: 'normal',
 				nextRunAt: null,
@@ -87,7 +87,7 @@ describe('Job', () => {
 			});
 			expect(job.toJson().failedAt).to.be.not.a('Date');
 
-			job = new Job(agenda, {
+			job = new Job(chronos, {
 				name: 'demo',
 				type: 'normal',
 				nextRunAt: null,
@@ -98,7 +98,7 @@ describe('Job', () => {
 	});
 
 	describe('unique', () => {
-		const job = new Job(agenda, { name: 'demo', type: 'normal' });
+		const job = new Job(chronos, { name: 'demo', type: 'normal' });
 		it('sets the unique property', () => {
 			job.unique({ 'data.type': 'active', 'data.userId': '123' });
 			expect(JSON.stringify(job.attrs.unique)).to.equal(
@@ -111,7 +111,7 @@ describe('Job', () => {
 	});
 
 	describe('repeatEvery', () => {
-		const job = new Job(agenda, { name: 'demo', type: 'normal' });
+		const job = new Job(chronos, { name: 'demo', type: 'normal' });
 		it('sets the repeat interval', () => {
 			job.repeatEvery(5000);
 			expect(job.attrs.repeatInterval).to.equal(5000);
@@ -120,13 +120,13 @@ describe('Job', () => {
 			expect(job.repeatEvery('one second')).to.equal(job);
 		});
 		it('sets the nextRunAt property with skipImmediate', () => {
-			const job2 = new Job(agenda, { name: 'demo', type: 'normal' });
+			const job2 = new Job(chronos, { name: 'demo', type: 'normal' });
 			const now = new Date().valueOf();
 			job2.repeatEvery('3 minutes', { skipImmediate: true });
 			expect(job2.attrs.nextRunAt).to.be.within(new Date(now + 180000), new Date(now + 180002)); // Inclusive
 		});
 		it('repeats from the existing nextRunAt property with skipImmediate', () => {
-			const job2 = new Job(agenda, { name: 'demo', type: 'normal' });
+			const job2 = new Job(chronos, { name: 'demo', type: 'normal' });
 			const futureDate = new Date('3000-01-01T00:00:00');
 			job2.attrs.nextRunAt = futureDate;
 			job2.repeatEvery('3 minutes', { skipImmediate: true });
@@ -134,7 +134,7 @@ describe('Job', () => {
 		});
 		it('repeats from the existing scheduled date with skipImmediate', () => {
 			const futureDate = new Date('3000-01-01T00:00:00');
-			const job2 = new Job(agenda, { name: 'demo', type: 'normal' }).schedule(futureDate);
+			const job2 = new Job(chronos, { name: 'demo', type: 'normal' }).schedule(futureDate);
 			job2.repeatEvery('3 minutes', { skipImmediate: true });
 			expect(job2.attrs.nextRunAt!.getTime()).to.equal(futureDate.valueOf() + 180000);
 		});
@@ -143,7 +143,7 @@ describe('Job', () => {
 	describe('schedule', () => {
 		let job;
 		beforeEach(() => {
-			job = new Job(agenda, { name: 'demo', type: 'normal' });
+			job = new Job(chronos, { name: 'demo', type: 'normal' });
 		});
 		it('sets the next run time', () => {
 			job.schedule('in 5 minutes');
@@ -159,7 +159,7 @@ describe('Job', () => {
 			expect(job.schedule('tomorrow at noon')).to.equal(job);
 		});
 		it('understands ISODates on the 30th', () => {
-			// https://github.com/agenda/agenda/issues/807
+			// https://github.com/chronos/chronos/issues/807
 			expect(job.schedule('2019-04-30T22:31:00.00Z').attrs.nextRunAt.getTime()).to.equal(
 				1556663460000
 			);
@@ -169,7 +169,7 @@ describe('Job', () => {
 	describe('priority', () => {
 		let job;
 		beforeEach(() => {
-			job = new Job(agenda, { name: 'demo', type: 'normal' });
+			job = new Job(chronos, { name: 'demo', type: 'normal' });
 		});
 		it('sets the priority to a number', () => {
 			job.priority(10);
@@ -188,7 +188,7 @@ describe('Job', () => {
 		let job: Job;
 
 		beforeEach(() => {
-			job = new Job(agenda, { name: 'demo', type: 'normal' });
+			job = new Job(chronos, { name: 'demo', type: 'normal' });
 		});
 
 		it('returns the job', () => {
@@ -359,13 +359,13 @@ describe('Job', () => {
 
 	describe('remove', () => {
 		it('removes the job', async () => {
-			const job = new Job(agenda, {
+			const job = new Job(chronos, {
 				name: 'removed job',
 				type: 'normal'
 			});
 			await job.save();
 			const resultSaved = await mongoDb
-				.collection('agendaJobs')
+				.collection('chronosJobs')
 				.find({
 					_id: job.attrs._id
 				})
@@ -375,7 +375,7 @@ describe('Job', () => {
 			await job.remove();
 
 			const resultDeleted = await mongoDb
-				.collection('agendaJobs')
+				.collection('chronosJobs')
 				.find({
 					_id: job.attrs._id
 				})
@@ -387,7 +387,7 @@ describe('Job', () => {
 
 	describe('run', () => {
 		beforeEach(async () => {
-			agenda.define('testRun', (_job, done) => {
+			chronos.define('testRun', (_job, done) => {
 				setTimeout(() => {
 					done();
 				}, 100);
@@ -395,7 +395,7 @@ describe('Job', () => {
 		});
 
 		it('updates lastRunAt', async () => {
-			const job = new Job(agenda, { name: 'testRun', type: 'normal' });
+			const job = new Job(chronos, { name: 'testRun', type: 'normal' });
 			await job.save();
 			const now = new Date();
 			await delay(5);
@@ -405,7 +405,7 @@ describe('Job', () => {
 		});
 
 		it('fails if job is undefined', async () => {
-			const job = new Job(agenda, { name: 'not defined', type: 'normal' });
+			const job = new Job(chronos, { name: 'not defined', type: 'normal' });
 			await job.save();
 
 			await job.run().catch(error => {
@@ -416,7 +416,7 @@ describe('Job', () => {
 		});
 
 		it('updates nextRunAt', async () => {
-			const job = new Job(agenda, { name: 'testRun', type: 'normal' });
+			const job = new Job(chronos, { name: 'testRun', type: 'normal' });
 			await job.save();
 
 			const now = new Date();
@@ -427,10 +427,10 @@ describe('Job', () => {
 		});
 
 		it('handles errors', async () => {
-			const job = new Job(agenda, { name: 'failBoat', type: 'normal' });
+			const job = new Job(chronos, { name: 'failBoat', type: 'normal' });
 			await job.save();
 
-			agenda.define('failBoat', () => {
+			chronos.define('failBoat', () => {
 				throw new Error('Zomg fail');
 			});
 			await job.run();
@@ -438,10 +438,10 @@ describe('Job', () => {
 		});
 
 		it('handles errors with q promises', async () => {
-			const job = new Job(agenda, { name: 'failBoat2', type: 'normal' });
+			const job = new Job(chronos, { name: 'failBoat2', type: 'normal' });
 			await job.save();
 
-			agenda.define('failBoat2', async (_job, cb) => {
+			chronos.define('failBoat2', async (_job, cb) => {
 				try {
 					throw new Error('Zomg fail');
 				} catch (err: any) {
@@ -453,15 +453,15 @@ describe('Job', () => {
 		});
 
 		it('allows async functions', async () => {
-			const job = new Job(agenda, { name: 'async', type: 'normal' });
+			const job = new Job(chronos, { name: 'async', type: 'normal' });
 			await job.save();
 
 			const successSpy = sinon.stub();
 			let finished = false;
 
-			agenda.once('success:async', successSpy);
+			chronos.once('success:async', successSpy);
 
-			agenda.define('async', async () => {
+			chronos.define('async', async () => {
 				await delay(5);
 				finished = true;
 			});
@@ -473,15 +473,15 @@ describe('Job', () => {
 		});
 
 		it('handles errors from async functions', async () => {
-			const job = new Job(agenda, { name: 'asyncFail', type: 'normal' });
+			const job = new Job(chronos, { name: 'asyncFail', type: 'normal' });
 			await job.save();
 
 			const failSpy = sinon.stub();
 			const err = new Error('failure');
 
-			agenda.once('fail:asyncFail', failSpy);
+			chronos.once('fail:asyncFail', failSpy);
 
-			agenda.define('asyncFail', async () => {
+			chronos.define('asyncFail', async () => {
 				await delay(5);
 				throw err;
 			});
@@ -492,15 +492,15 @@ describe('Job', () => {
 		});
 
 		it('waits for the callback to be called even if the function is async', async () => {
-			const job = new Job(agenda, { name: 'asyncCb', type: 'normal' });
+			const job = new Job(chronos, { name: 'asyncCb', type: 'normal' });
 			await job.save();
 
 			const successSpy = sinon.stub();
 			let finishedCb = false;
 
-			agenda.once('success:asyncCb', successSpy);
+			chronos.once('success:asyncCb', successSpy);
 
-			agenda.define('asyncCb', async (_job, cb) => {
+			chronos.define('asyncCb', async (_job, cb) => {
 				(async () => {
 					await delay(5);
 					finishedCb = true;
@@ -514,15 +514,15 @@ describe('Job', () => {
 		});
 
 		it("uses the callback error if the function is async and didn't reject", async () => {
-			const job = new Job(agenda, { name: 'asyncCbError', type: 'normal' });
+			const job = new Job(chronos, { name: 'asyncCbError', type: 'normal' });
 			await job.save();
 
 			const failSpy = sinon.stub();
 			const err = new Error('failure');
 
-			agenda.once('fail:asyncCbError', failSpy);
+			chronos.once('fail:asyncCbError', failSpy);
 
-			agenda.define('asyncCbError', async (_job, cb) => {
+			chronos.define('asyncCbError', async (_job, cb) => {
 				(async () => {
 					await delay(5);
 					cb(err);
@@ -535,16 +535,16 @@ describe('Job', () => {
 		});
 
 		it('favors the async function error over the callback error if it comes first', async () => {
-			const job = new Job(agenda, { name: 'asyncCbTwoError', type: 'normal' });
+			const job = new Job(chronos, { name: 'asyncCbTwoError', type: 'normal' });
 			await job.save();
 
 			const failSpy = sinon.stub();
 			const fnErr = new Error('functionFailure');
 			const cbErr = new Error('callbackFailure');
 
-			agenda.on('fail:asyncCbTwoError', failSpy);
+			chronos.on('fail:asyncCbTwoError', failSpy);
 
-			agenda.define('asyncCbTwoError', async (_job, cb) => {
+			chronos.define('asyncCbTwoError', async (_job, cb) => {
 				(async () => {
 					await delay(5);
 					cb(cbErr);
@@ -560,16 +560,16 @@ describe('Job', () => {
 		});
 
 		it('favors the callback error over the async function error if it comes first', async () => {
-			const job = new Job(agenda, { name: 'asyncCbTwoErrorCb', type: 'normal' });
+			const job = new Job(chronos, { name: 'asyncCbTwoErrorCb', type: 'normal' });
 			await job.save();
 
 			const failSpy = sinon.stub();
 			const fnErr = new Error('functionFailure');
 			const cbErr = new Error('callbackFailure');
 
-			agenda.on('fail:asyncCbTwoErrorCb', failSpy);
+			chronos.on('fail:asyncCbTwoErrorCb', failSpy);
 
-			agenda.define('asyncCbTwoErrorCb', async (_job, cb) => {
+			chronos.define('asyncCbTwoErrorCb', async (_job, cb) => {
 				cb(cbErr);
 				await delay(5);
 				throw fnErr;
@@ -582,13 +582,13 @@ describe('Job', () => {
 		});
 
 		it("doesn't allow a stale job to be saved", async () => {
-			const job = new Job(agenda, { name: 'failBoat3', type: 'normal' });
+			const job = new Job(chronos, { name: 'failBoat3', type: 'normal' });
 			await job.save();
 
-			agenda.define('failBoat3', async (_job, cb) => {
+			chronos.define('failBoat3', async (_job, cb) => {
 				// Explicitly find the job again,
 				// so we have a new job object
-				const jobs = await agenda.jobs({ name: 'failBoat3' });
+				const jobs = await chronos.jobs({ name: 'failBoat3' });
 				expect(jobs).to.have.length(1);
 				await jobs[0].remove();
 				cb();
@@ -597,7 +597,7 @@ describe('Job', () => {
 			await job.run();
 
 			// Expect the deleted job to not exist in the database
-			const deletedJob = await agenda.jobs({ name: 'failBoat3' });
+			const deletedJob = await chronos.jobs({ name: 'failBoat3' });
 			expect(deletedJob).to.have.length(0);
 		});
 	});
@@ -605,7 +605,7 @@ describe('Job', () => {
 	describe('touch', () => {
 		it('extends the lock lifetime', async () => {
 			const lockedAt = new Date();
-			const job = new Job(agenda, { name: 'some job', type: 'normal', lockedAt });
+			const job = new Job(chronos, { name: 'some job', type: 'normal', lockedAt });
 			await job.save();
 			await delay(2);
 			await job.touch();
@@ -614,7 +614,7 @@ describe('Job', () => {
 	});
 
 	describe('fail', () => {
-		const job = new Job(agenda, { name: 'demo', type: 'normal' });
+		const job = new Job(chronos, { name: 'demo', type: 'normal' });
 		it('takes a string', () => {
 			job.fail('test');
 			expect(job.attrs.failReason).to.equal('test');
@@ -635,58 +635,58 @@ describe('Job', () => {
 
 	describe('enable', () => {
 		it('sets disabled to false on the job', () => {
-			const job = new Job(agenda, { name: 'test', type: 'normal', disabled: true });
+			const job = new Job(chronos, { name: 'test', type: 'normal', disabled: true });
 			job.enable();
 			expect(job.attrs.disabled).to.equal(false);
 		});
 
 		it('returns the job', () => {
-			const job = new Job(agenda, { name: 'test', type: 'normal', disabled: true });
+			const job = new Job(chronos, { name: 'test', type: 'normal', disabled: true });
 			expect(job.enable()).to.equal(job);
 		});
 	});
 
 	describe('disable', () => {
 		it('sets disabled to true on the job', () => {
-			const job = new Job(agenda, { name: 'demo', type: 'normal' });
+			const job = new Job(chronos, { name: 'demo', type: 'normal' });
 			job.disable();
 			expect(job.attrs.disabled).to.be.true;
 		});
 		it('returns the job', () => {
-			const job = new Job(agenda, { name: 'demo', type: 'normal' });
+			const job = new Job(chronos, { name: 'demo', type: 'normal' });
 			expect(job.disable()).to.equal(job);
 		});
 	});
 
 	describe('save', () => {
 		/** this is undocumented, and therefore we remvoe it
-		it('calls saveJob on the agenda', done => {
-			const oldSaveJob = agenda.saveJob;
-			agenda.saveJob = () => {
-				agenda.saveJob = oldSaveJob;
+		it('calls saveJob on the chronos', done => {
+			const oldSaveJob = chronos.saveJob;
+			chronos.saveJob = () => {
+				chronos.saveJob = oldSaveJob;
 				done();
 			};
 
-			const job = agenda.create('some job', {
+			const job = chronos.create('some job', {
 				wee: 1
 			});
 			job.save();
 		}); */
 
 		it('doesnt save the job if its been removed', async () => {
-			const job = agenda.create('another job');
+			const job = chronos.create('another job');
 			// Save, then remove, then try and save again.
 			// The second save should fail.
 			const j = await job.save();
 			await j.remove();
 			await j.save();
 
-			const jobs = await agenda.jobs({ name: 'another job' });
+			const jobs = await chronos.jobs({ name: 'another job' });
 			expect(jobs).to.have.length(0);
 		});
 
 		it('returns the job', async () => {
-			const job = agenda.create('some job', {
+			const job = chronos.create('some job', {
 				wee: 1
 			});
 			expect(await job.save()).to.equal(job);
@@ -696,13 +696,13 @@ describe('Job', () => {
 	describe('start/stop', () => {
 		it('starts/stops the job queue', async () => {
 			const processed = new Promise(resolve => {
-				agenda.define('jobQueueTest', async _job => {
+				chronos.define('jobQueueTest', async _job => {
 					resolve('processed');
 				});
 			});
-			await agenda.every('1 second', 'jobQueueTest');
-			agenda.processEvery('1 second');
-			await agenda.start();
+			await chronos.every('1 second', 'jobQueueTest');
+			chronos.processEvery('1 second');
+			await chronos.start();
 
 			expect(
 				await Promise.race([
@@ -713,9 +713,9 @@ describe('Job', () => {
 				])
 			).to.eq('processed');
 
-			await agenda.stop();
+			await chronos.stop();
 			const processedStopped = new Promise<void>(resolve => {
-				agenda.define('jobQueueTest', async _job => {
+				chronos.define('jobQueueTest', async _job => {
 					resolve();
 				});
 			});
@@ -732,62 +732,62 @@ describe('Job', () => {
 
 		it('does not run disabled jobs', async () => {
 			let ran = false;
-			agenda.define('disabledJob', () => {
+			chronos.define('disabledJob', () => {
 				ran = true;
 			});
 
-			const job = await agenda.create('disabledJob').disable().schedule('now');
+			const job = await chronos.create('disabledJob').disable().schedule('now');
 			await job.save();
-			await agenda.start();
+			await chronos.start();
 			await delay(jobTimeout);
 
 			expect(ran).to.equal(false);
 
-			await agenda.stop();
+			await chronos.stop();
 		});
 
 		it('does not throw an error trying to process undefined jobs', async () => {
-			await agenda.start();
-			const job = agenda.create('jobDefinedOnAnotherServer').schedule('now');
+			await chronos.start();
+			const job = chronos.create('jobDefinedOnAnotherServer').schedule('now');
 
 			await job.save();
 
 			await delay(jobTimeout);
-			await agenda.stop();
+			await chronos.stop();
 		});
 
 		it('clears locks on stop', async () => {
-			agenda.define('longRunningJob', (_job, _cb) => {
+			chronos.define('longRunningJob', (_job, _cb) => {
 				// eslint-disable-line no-unused-vars
 				// Job never finishes
 			});
-			agenda.every('10 seconds', 'longRunningJob');
-			agenda.processEvery('1 second');
+			chronos.every('10 seconds', 'longRunningJob');
+			chronos.processEvery('1 second');
 
-			await agenda.start();
+			await chronos.start();
 			await delay(jobTimeout);
-			const jobStarted = await agenda.db.getJobs({ name: 'longRunningJob' });
+			const jobStarted = await chronos.db.getJobs({ name: 'longRunningJob' });
 			expect(jobStarted[0].lockedAt).to.not.equal(null);
-			await agenda.stop();
-			const job = await agenda.db.getJobs({ name: 'longRunningJob' });
+			await chronos.stop();
+			const job = await chronos.db.getJobs({ name: 'longRunningJob' });
 			expect(job[0].lockedAt).to.equal(undefined);
 		});
 
 		describe('events', () => {
 			beforeEach(() => {
-				agenda.define('jobQueueTest', (_job, cb) => {
+				chronos.define('jobQueueTest', (_job, cb) => {
 					cb();
 				});
-				agenda.define('failBoat', () => {
+				chronos.define('failBoat', () => {
 					throw new Error('Zomg fail');
 				});
 			});
 
 			it('emits start event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'jobQueueTest', type: 'normal' });
+				const job = new Job(chronos, { name: 'jobQueueTest', type: 'normal' });
 				await job.save();
-				agenda.once('start', spy);
+				chronos.once('start', spy);
 
 				await job.run();
 				expect(spy.called).to.be.true;
@@ -796,9 +796,9 @@ describe('Job', () => {
 
 			it('emits start:job name event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'jobQueueTest', type: 'normal' });
+				const job = new Job(chronos, { name: 'jobQueueTest', type: 'normal' });
 				await job.save();
-				agenda.once('start:jobQueueTest', spy);
+				chronos.once('start:jobQueueTest', spy);
 
 				await job.run();
 				expect(spy.called).to.be.true;
@@ -807,9 +807,9 @@ describe('Job', () => {
 
 			it('emits complete event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'jobQueueTest', type: 'normal' });
+				const job = new Job(chronos, { name: 'jobQueueTest', type: 'normal' });
 				await job.save();
-				agenda.once('complete', spy);
+				chronos.once('complete', spy);
 
 				await job.run();
 				expect(spy.called).to.be.true;
@@ -818,9 +818,9 @@ describe('Job', () => {
 
 			it('emits complete:job name event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'jobQueueTest', type: 'normal' });
+				const job = new Job(chronos, { name: 'jobQueueTest', type: 'normal' });
 				await job.save();
-				agenda.once('complete:jobQueueTest', spy);
+				chronos.once('complete:jobQueueTest', spy);
 
 				await job.run();
 				expect(spy.called).to.be.true;
@@ -829,9 +829,9 @@ describe('Job', () => {
 
 			it('emits success event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'jobQueueTest', type: 'normal' });
+				const job = new Job(chronos, { name: 'jobQueueTest', type: 'normal' });
 				await job.save();
-				agenda.once('success', spy);
+				chronos.once('success', spy);
 
 				await job.run();
 				expect(spy.called).to.be.true;
@@ -840,9 +840,9 @@ describe('Job', () => {
 
 			it('emits success:job name event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'jobQueueTest', type: 'normal' });
+				const job = new Job(chronos, { name: 'jobQueueTest', type: 'normal' });
 				await job.save();
-				agenda.once('success:jobQueueTest', spy);
+				chronos.once('success:jobQueueTest', spy);
 
 				await job.run();
 				expect(spy.called).to.be.true;
@@ -851,9 +851,9 @@ describe('Job', () => {
 
 			it('emits fail event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'failBoat', type: 'normal' });
+				const job = new Job(chronos, { name: 'failBoat', type: 'normal' });
 				await job.save();
-				agenda.once('fail', spy);
+				chronos.once('fail', spy);
 
 				await job.run().catch(error => {
 					expect(error.message).to.equal('Zomg fail');
@@ -869,9 +869,9 @@ describe('Job', () => {
 
 			it('emits fail:job name event', async () => {
 				const spy = sinon.spy();
-				const job = new Job(agenda, { name: 'failBoat', type: 'normal' });
+				const job = new Job(chronos, { name: 'failBoat', type: 'normal' });
 				await job.save();
-				agenda.once('fail:failBoat', spy);
+				chronos.once('fail:failBoat', spy);
 
 				await job.run().catch(error => {
 					expect(error.message).to.equal('Zomg fail');
@@ -891,13 +891,13 @@ describe('Job', () => {
 		it('runs a recurring job after a lock has expired', async () => {
 			const processorPromise = new Promise(resolve => {
 				let startCounter = 0;
-				agenda.define(
+				chronos.define(
 					'lock job',
 					async () => {
 						startCounter++;
 
 						if (startCounter !== 1) {
-							await agenda.stop();
+							await chronos.stop();
 							resolve(startCounter);
 						}
 					},
@@ -907,13 +907,13 @@ describe('Job', () => {
 				);
 			});
 
-			expect(agenda.definitions['lock job'].lockLifetime).to.equal(50);
+			expect(chronos.definitions['lock job'].lockLifetime).to.equal(50);
 
-			agenda.defaultConcurrency(100);
-			agenda.processEvery(10);
-			agenda.every('0.02 seconds', 'lock job');
-			await agenda.stop();
-			await agenda.start();
+			chronos.defaultConcurrency(100);
+			chronos.processEvery(10);
+			chronos.every('0.02 seconds', 'lock job');
+			await chronos.stop();
+			await chronos.start();
 			expect(await processorPromise).to.equal(2);
 		});
 
@@ -921,7 +921,7 @@ describe('Job', () => {
 			const processorPromise = new Promise(resolve => {
 				let runCount = 0;
 
-				agenda.define(
+				chronos.define(
 					'lock job',
 					async _job => {
 						runCount++;
@@ -945,12 +945,12 @@ describe('Job', () => {
 			});
 
 			let errorHasBeenThrown;
-			agenda.on('error', err => {
+			chronos.on('error', err => {
 				errorHasBeenThrown = err;
 			});
-			agenda.processEvery(25);
-			await agenda.start();
-			agenda.now('lock job', {
+			chronos.processEvery(25);
+			await chronos.start();
+			chronos.now('lock job', {
 				i: 1
 			});
 			expect(await processorPromise).to.equal(2);
@@ -960,7 +960,7 @@ describe('Job', () => {
 		it('does not process locked jobs', async () => {
 			const history: any[] = [];
 
-			agenda.define(
+			chronos.define(
 				'lock job',
 				(job, cb) => {
 					history.push(job.attrs.data.i);
@@ -974,13 +974,13 @@ describe('Job', () => {
 				}
 			);
 
-			agenda.processEvery(100);
-			await agenda.start();
+			chronos.processEvery(100);
+			await chronos.start();
 
 			await Promise.all([
-				agenda.now('lock job', { i: 1 }),
-				agenda.now('lock job', { i: 2 }),
-				agenda.now('lock job', { i: 3 })
+				chronos.now('lock job', { i: 1 }),
+				chronos.now('lock job', { i: 2 }),
+				chronos.now('lock job', { i: 3 })
 			]);
 
 			await delay(500);
@@ -990,105 +990,105 @@ describe('Job', () => {
 			expect(history).to.contain(3);
 		});
 
-		it('does not on-the-fly lock more than agenda._lockLimit jobs', async () => {
-			agenda.lockLimit(1);
+		it('does not on-the-fly lock more than chronos._lockLimit jobs', async () => {
+			chronos.lockLimit(1);
 
-			agenda.define('lock job', (_job, _cb) => {
+			chronos.define('lock job', (_job, _cb) => {
 				/* this job nevers finishes */
 			}); // eslint-disable-line no-unused-vars
 
-			await agenda.start();
+			await chronos.start();
 
-			await Promise.all([agenda.now('lock job', { i: 1 }), agenda.now('lock job', { i: 2 })]);
+			await Promise.all([chronos.now('lock job', { i: 1 }), chronos.now('lock job', { i: 2 })]);
 
 			// give it some time to get picked up
 			await delay(200);
 
-			expect((await agenda.getRunningStats()).lockedJobs).to.equal(1);
+			expect((await chronos.getRunningStats()).lockedJobs).to.equal(1);
 		});
 
-		it('does not on-the-fly lock more mixed jobs than agenda._lockLimit jobs', async () => {
-			agenda.lockLimit(1);
+		it('does not on-the-fly lock more mixed jobs than chronos._lockLimit jobs', async () => {
+			chronos.lockLimit(1);
 
-			agenda.define('lock job', (_job, _cb) => {}); // eslint-disable-line no-unused-vars
-			agenda.define('lock job2', (_job, _cb) => {}); // eslint-disable-line no-unused-vars
-			agenda.define('lock job3', (_job, _cb) => {}); // eslint-disable-line no-unused-vars
-			agenda.define('lock job4', (_job, _cb) => {}); // eslint-disable-line no-unused-vars
-			agenda.define('lock job5', (_job, _cb) => {}); // eslint-disable-line no-unused-vars
+			chronos.define('lock job', (_job, _cb) => { }); // eslint-disable-line no-unused-vars
+			chronos.define('lock job2', (_job, _cb) => { }); // eslint-disable-line no-unused-vars
+			chronos.define('lock job3', (_job, _cb) => { }); // eslint-disable-line no-unused-vars
+			chronos.define('lock job4', (_job, _cb) => { }); // eslint-disable-line no-unused-vars
+			chronos.define('lock job5', (_job, _cb) => { }); // eslint-disable-line no-unused-vars
 
-			await agenda.start();
+			await chronos.start();
 
 			await Promise.all([
-				agenda.now('lock job', { i: 1 }),
-				agenda.now('lock job5', { i: 2 }),
-				agenda.now('lock job4', { i: 3 }),
-				agenda.now('lock job3', { i: 4 }),
-				agenda.now('lock job2', { i: 5 })
+				chronos.now('lock job', { i: 1 }),
+				chronos.now('lock job5', { i: 2 }),
+				chronos.now('lock job4', { i: 3 }),
+				chronos.now('lock job3', { i: 4 }),
+				chronos.now('lock job2', { i: 5 })
 			]);
 
 			await delay(500);
-			expect((await agenda.getRunningStats()).lockedJobs).to.equal(1);
-			await agenda.stop();
+			expect((await chronos.getRunningStats()).lockedJobs).to.equal(1);
+			await chronos.stop();
 		});
 
 		it('does not on-the-fly lock more than definition.lockLimit jobs', async () => {
-			agenda.define('lock job', (_job, _cb) => {}, { lockLimit: 1 }); // eslint-disable-line no-unused-vars
+			chronos.define('lock job', (_job, _cb) => { }, { lockLimit: 1 }); // eslint-disable-line no-unused-vars
 
-			await agenda.start();
+			await chronos.start();
 
-			await Promise.all([agenda.now('lock job', { i: 1 }), agenda.now('lock job', { i: 2 })]);
+			await Promise.all([chronos.now('lock job', { i: 1 }), chronos.now('lock job', { i: 2 })]);
 
 			await delay(500);
-			expect((await agenda.getRunningStats()).lockedJobs).to.equal(1);
+			expect((await chronos.getRunningStats()).lockedJobs).to.equal(1);
 		});
 
-		it('does not lock more than agenda._lockLimit jobs during processing interval', async () => {
-			agenda.lockLimit(1);
-			agenda.processEvery(200);
+		it('does not lock more than chronos._lockLimit jobs during processing interval', async () => {
+			chronos.lockLimit(1);
+			chronos.processEvery(200);
 
-			agenda.define('lock job', (_job, _cb) => {}); // eslint-disable-line no-unused-vars
+			chronos.define('lock job', (_job, _cb) => { }); // eslint-disable-line no-unused-vars
 
-			await agenda.start();
+			await chronos.start();
 
 			const when = DateTime.local().plus({ milliseconds: 300 }).toJSDate();
 
 			await Promise.all([
-				agenda.schedule(when, 'lock job', { i: 1 }),
-				agenda.schedule(when, 'lock job', { i: 2 })
+				chronos.schedule(when, 'lock job', { i: 1 }),
+				chronos.schedule(when, 'lock job', { i: 2 })
 			]);
 
 			await delay(500);
-			expect((await agenda.getRunningStats()).lockedJobs).to.equal(1);
+			expect((await chronos.getRunningStats()).lockedJobs).to.equal(1);
 		});
 
 		it('does not lock more than definition.lockLimit jobs during processing interval', async () => {
-			agenda.processEvery(200);
+			chronos.processEvery(200);
 
-			agenda.define('lock job', (_job, _cb) => {}, { lockLimit: 1 }); // eslint-disable-line no-unused-vars
+			chronos.define('lock job', (_job, _cb) => { }, { lockLimit: 1 }); // eslint-disable-line no-unused-vars
 
-			await agenda.start();
+			await chronos.start();
 
 			const when = DateTime.local().plus({ milliseconds: 300 }).toJSDate();
 
 			await Promise.all([
-				agenda.schedule(when, 'lock job', { i: 1 }),
-				agenda.schedule(when, 'lock job', { i: 2 })
+				chronos.schedule(when, 'lock job', { i: 1 }),
+				chronos.schedule(when, 'lock job', { i: 2 })
 			]);
 
 			await delay(500);
-			expect((await agenda.getRunningStats()).lockedJobs).to.equal(1);
-			await agenda.stop();
+			expect((await chronos.getRunningStats()).lockedJobs).to.equal(1);
+			await chronos.stop();
 		});
 	});
 
 	describe('job concurrency', () => {
 		it('should not block a job for concurrency of another job', async () => {
-			agenda.processEvery(50);
+			chronos.processEvery(50);
 
 			const processed: number[] = [];
 			const now = Date.now();
 
-			agenda.define(
+			chronos.define(
 				'blocking',
 				(job, cb) => {
 					processed.push(job.attrs.data.i);
@@ -1100,7 +1100,7 @@ describe('Job', () => {
 			);
 
 			const checkResultsPromise = new Promise<number[]>(resolve => {
-				agenda.define(
+				chronos.define(
 					'non-blocking',
 					job => {
 						processed.push(job.attrs.data.i);
@@ -1114,18 +1114,18 @@ describe('Job', () => {
 			});
 
 			let finished = false;
-			agenda.on('complete', () => {
+			chronos.on('complete', () => {
 				if (!finished && processed.length === 3) {
 					finished = true;
 				}
 			});
 
-			agenda.start();
+			chronos.start();
 
 			await Promise.all([
-				agenda.schedule(new Date(now + 100), 'blocking', { i: 1 }),
-				agenda.schedule(new Date(now + 101), 'blocking', { i: 2 }),
-				agenda.schedule(new Date(now + 102), 'non-blocking', { i: 3 })
+				chronos.schedule(new Date(now + 100), 'blocking', { i: 1 }),
+				chronos.schedule(new Date(now + 101), 'blocking', { i: 2 }),
+				chronos.schedule(new Date(now + 102), 'non-blocking', { i: 3 })
 			]);
 
 			try {
@@ -1140,19 +1140,19 @@ describe('Job', () => {
 				]);
 				expect(results).not.to.contain(2);
 			} catch (err) {
-				console.log('stats', err, JSON.stringify(await agenda.getRunningStats(), undefined, 3));
+				console.log('stats', err, JSON.stringify(await chronos.getRunningStats(), undefined, 3));
 				throw err;
 			}
 		});
 
 		it('should run jobs as first in first out (FIFO)', async () => {
-			agenda.processEvery(100);
-			agenda.define('fifo', (_job, cb) => cb(), { concurrency: 1 });
+			chronos.processEvery(100);
+			chronos.define('fifo', (_job, cb) => cb(), { concurrency: 1 });
 
 			const checkResultsPromise = new Promise<number[]>(resolve => {
 				const results: number[] = [];
 
-				agenda.on('start:fifo', job => {
+				chronos.on('start:fifo', job => {
 					results.push(new Date(job.attrs.nextRunAt!).getTime());
 					if (results.length !== 3) {
 						return;
@@ -1162,13 +1162,13 @@ describe('Job', () => {
 				});
 			});
 
-			await agenda.start();
+			await chronos.start();
 
-			await agenda.now('fifo');
+			await chronos.now('fifo');
 			await delay(50);
-			await agenda.now('fifo');
+			await chronos.now('fifo');
 			await delay(50);
-			await agenda.now('fifo');
+			await chronos.now('fifo');
 			await delay(50);
 			try {
 				const results: number[] = await Promise.race([
@@ -1182,7 +1182,7 @@ describe('Job', () => {
 				]);
 				expect(results.join('')).to.eql(results.sort().join(''));
 			} catch (err) {
-				console.log('stats', err, JSON.stringify(await agenda.getRunningStats(), undefined, 3));
+				console.log('stats', err, JSON.stringify(await chronos.getRunningStats(), undefined, 3));
 				throw err;
 			}
 		});
@@ -1190,13 +1190,13 @@ describe('Job', () => {
 		it('should run jobs as first in first out (FIFO) with respect to priority', async () => {
 			const now = Date.now();
 
-			agenda.define('fifo-priority', (_job, cb) => setTimeout(cb, 100), { concurrency: 1 });
+			chronos.define('fifo-priority', (_job, cb) => setTimeout(cb, 100), { concurrency: 1 });
 
 			const checkResultsPromise = new Promise(resolve => {
 				const times: number[] = [];
 				const priorities: number[] = [];
 
-				agenda.on('start:fifo-priority', job => {
+				chronos.on('start:fifo-priority', job => {
 					priorities.push(job.attrs.priority);
 					times.push(new Date(job.attrs.lastRunAt!).getTime());
 					if (priorities.length !== 3 || times.length !== 3) {
@@ -1208,19 +1208,19 @@ describe('Job', () => {
 			});
 
 			await Promise.all([
-				agenda.create('fifo-priority', { i: 1 }).schedule(new Date(now)).priority('high').save(),
-				agenda
+				chronos.create('fifo-priority', { i: 1 }).schedule(new Date(now)).priority('high').save(),
+				chronos
 					.create('fifo-priority', { i: 2 })
 					.schedule(new Date(now + 100))
 					.priority('low')
 					.save(),
-				agenda
+				chronos
 					.create('fifo-priority', { i: 3 })
 					.schedule(new Date(now + 100))
 					.priority('high')
 					.save()
 			]);
-			await agenda.start();
+			await chronos.start();
 			try {
 				const { times, priorities } = await Promise.race<any>([
 					checkResultsPromise,
@@ -1235,22 +1235,22 @@ describe('Job', () => {
 				expect(times.join('')).to.eql(times.sort().join(''));
 				expect(priorities).to.eql([10, 10, -10]);
 			} catch (err) {
-				console.log('stats', err, JSON.stringify(await agenda.getRunningStats(), undefined, 3));
+				console.log('stats', err, JSON.stringify(await chronos.getRunningStats(), undefined, 3));
 				throw err;
 			}
 		});
 
 		it('should run higher priority jobs first', async () => {
 			// Inspired by tests added by @lushc here:
-			// <https://github.com/agenda/agenda/pull/451/commits/336ff6445803606a6dc468a6f26c637145790adc>
+			// <https://github.com/chronos/chronos/pull/451/commits/336ff6445803606a6dc468a6f26c637145790adc>
 			const now = new Date();
 
-			agenda.define('priority', (_job, cb) => setTimeout(cb, 10), { concurrency: 1 });
+			chronos.define('priority', (_job, cb) => setTimeout(cb, 10), { concurrency: 1 });
 
 			const checkResultsPromise = new Promise(resolve => {
 				const results: number[] = [];
 
-				agenda.on('start:priority', job => {
+				chronos.on('start:priority', job => {
 					results.push(job.attrs.priority);
 					if (results.length !== 3) {
 						return;
@@ -1261,11 +1261,11 @@ describe('Job', () => {
 			});
 
 			await Promise.all([
-				agenda.create('priority').schedule(now).save(),
-				agenda.create('priority').schedule(now).priority('low').save(),
-				agenda.create('priority').schedule(now).priority('high').save()
+				chronos.create('priority').schedule(now).save(),
+				chronos.create('priority').schedule(now).priority('low').save(),
+				chronos.create('priority').schedule(now).priority('high').save()
 			]);
-			await agenda.start();
+			await chronos.start();
 			try {
 				const results = await Promise.race([
 					checkResultsPromise,
@@ -1278,30 +1278,30 @@ describe('Job', () => {
 				]);
 				expect(results).to.eql([10, 0, -10]);
 			} catch (err) {
-				console.log('stats', JSON.stringify(await agenda.getRunningStats(), undefined, 3));
+				console.log('stats', JSON.stringify(await chronos.getRunningStats(), undefined, 3));
 				throw err;
 			}
 		});
 
 		it('should support custom sort option', () => {
 			const sort = { foo: 1 } as const;
-			const agendaSort = new Agenda({ sort });
+			const agendaSort = new Chronos({ sort });
 			expect(agendaSort.attrs.sort).to.eql(sort);
 		});
 	});
 
 	describe('every running', () => {
 		beforeEach(async () => {
-			agenda.defaultConcurrency(1);
-			agenda.processEvery(5);
+			chronos.defaultConcurrency(1);
+			chronos.processEvery(5);
 
-			await agenda.stop();
+			await chronos.stop();
 		});
 
 		it('should run the same job multiple times', async () => {
 			let counter = 0;
 
-			agenda.define('everyRunTest1', (_job, cb) => {
+			chronos.define('everyRunTest1', (_job, cb) => {
 				if (counter < 2) {
 					counter++;
 				}
@@ -1309,36 +1309,36 @@ describe('Job', () => {
 				cb();
 			});
 
-			await agenda.every(10, 'everyRunTest1');
+			await chronos.every(10, 'everyRunTest1');
 
-			await agenda.start();
+			await chronos.start();
 
-			await agenda.jobs({ name: 'everyRunTest1' });
+			await chronos.jobs({ name: 'everyRunTest1' });
 			await delay(jobTimeout);
 			expect(counter).to.equal(2);
 
-			await agenda.stop();
+			await chronos.stop();
 		});
 
 		it('should reuse the same job on multiple runs', async () => {
 			let counter = 0;
 
-			agenda.define('everyRunTest2', (_job, cb) => {
+			chronos.define('everyRunTest2', (_job, cb) => {
 				if (counter < 2) {
 					counter++;
 				}
 
 				cb();
 			});
-			await agenda.every(10, 'everyRunTest2');
+			await chronos.every(10, 'everyRunTest2');
 
-			await agenda.start();
+			await chronos.start();
 
 			await delay(jobTimeout);
-			const result = await agenda.jobs({ name: 'everyRunTest2' });
+			const result = await chronos.jobs({ name: 'everyRunTest2' });
 
 			expect(result).to.have.length(1);
-			await agenda.stop();
+			await chronos.stop();
 		});
 	});
 
@@ -1366,7 +1366,7 @@ describe('Job', () => {
 				};
 
 				const startService = () => {
-					const serverPath = path.join(__dirname, 'fixtures', 'agenda-instance.ts');
+					const serverPath = path.join(__dirname, 'fixtures', 'chronos-instance.ts');
 					const n = cp.fork(serverPath, [mongoCfg, 'daily'], {
 						execArgv: ['-r', 'ts-node/register']
 					});
@@ -1379,7 +1379,7 @@ describe('Job', () => {
 			});
 
 			it('Should properly run jobs when defined via an array', done => {
-				const serverPath = path.join(__dirname, 'fixtures', 'agenda-instance.ts');
+				const serverPath = path.join(__dirname, 'fixtures', 'chronos-instance.ts');
 				const n = cp.fork(serverPath, [mongoCfg, 'daily-array'], {
 					execArgv: ['-r', 'ts-node/register']
 				});
@@ -1419,22 +1419,22 @@ describe('Job', () => {
 			it('should not run if job is disabled', async () => {
 				let counter = 0;
 
-				agenda.define('everyDisabledTest', (_job, cb) => {
+				chronos.define('everyDisabledTest', (_job, cb) => {
 					counter++;
 					cb();
 				});
 
-				const job = await agenda.every(10, 'everyDisabledTest');
+				const job = await chronos.every(10, 'everyDisabledTest');
 
 				job.disable();
 
 				await job.save();
-				await agenda.start();
+				await chronos.start();
 
 				await delay(jobTimeout);
-				await agenda.jobs({ name: 'everyDisabledTest' });
+				await chronos.jobs({ name: 'everyDisabledTest' });
 				expect(counter).to.equal(0);
-				await agenda.stop();
+				await chronos.stop();
 			});
 		});
 
@@ -1462,7 +1462,7 @@ describe('Job', () => {
 				};
 
 				const startService = () => {
-					const serverPath = path.join(__dirname, 'fixtures', 'agenda-instance.ts');
+					const serverPath = path.join(__dirname, 'fixtures', 'chronos-instance.ts');
 					const n = cp.fork(serverPath, [mongoCfg, 'define-future-job'], {
 						execArgv: ['-r', 'ts-node/register']
 					});
@@ -1488,7 +1488,7 @@ describe('Job', () => {
 				};
 
 				const startService = () => {
-					const serverPath = path.join(__dirname, 'fixtures', 'agenda-instance.ts');
+					const serverPath = path.join(__dirname, 'fixtures', 'chronos-instance.ts');
 					const n = cp.fork(serverPath, [mongoCfg, 'define-past-due-job'], {
 						execArgv: ['-r', 'ts-node/register']
 					});
@@ -1501,7 +1501,7 @@ describe('Job', () => {
 			});
 
 			it('Should schedule using array of names', done => {
-				const serverPath = path.join(__dirname, 'fixtures', 'agenda-instance.ts');
+				const serverPath = path.join(__dirname, 'fixtures', 'chronos-instance.ts');
 				const n = cp.fork(serverPath, [mongoCfg, 'schedule-array'], {
 					execArgv: ['-r', 'ts-node/register']
 				});
@@ -1553,7 +1553,7 @@ describe('Job', () => {
 					return done(new Error('Job did not immediately run!'));
 				};
 
-				const serverPath = path.join(__dirname, 'fixtures', 'agenda-instance.ts');
+				const serverPath = path.join(__dirname, 'fixtures', 'chronos-instance.ts');
 				const n = cp.fork(serverPath, [mongoCfg, 'now'], { execArgv: ['-r', 'ts-node/register'] });
 
 				n.on('message', receiveMessage);
@@ -1565,17 +1565,17 @@ describe('Job', () => {
 			it('Should not run a job that has already been run', async () => {
 				const runCount = {};
 
-				agenda.define('test-job', (job, cb) => {
+				chronos.define('test-job', (job, cb) => {
 					const id = job.attrs._id!.toString();
 
 					runCount[id] = runCount[id] ? runCount[id] + 1 : 1;
 					cb();
 				});
 
-				agenda.processEvery(100);
-				await agenda.start();
+				chronos.processEvery(100);
+				await chronos.start();
 
-				await Promise.all([...new Array(10)].map(() => agenda.now('test-job')));
+				await Promise.all([...new Array(10)].map(() => chronos.now('test-job')));
 
 				await delay(jobTimeout);
 				const ids = Object.keys(runCount);
@@ -1588,17 +1588,17 @@ describe('Job', () => {
 	});
 
 	it('checks database for running job on "client"', async () => {
-		agenda.define('test', async () => {
+		chronos.define('test', async () => {
 			await new Promise(resolve => {
 				setTimeout(resolve, 30000);
 			});
 		});
 
-		const job = await agenda.now('test');
-		await agenda.start();
+		const job = await chronos.now('test');
+		await chronos.start();
 
 		await new Promise(resolve => {
-			agenda.on('start:test', resolve);
+			chronos.on('start:test', resolve);
 		});
 
 		expect(await job.isRunning()).to.be.equal(true);
@@ -1606,24 +1606,24 @@ describe('Job', () => {
 
 	it('should not run job if is has been removed', async () => {
 		let executed = false;
-		agenda.define('test', async () => {
+		chronos.define('test', async () => {
 			executed = true;
 		});
 
-		const job = new Job(agenda, {
+		const job = new Job(chronos, {
 			name: 'test',
 			type: 'normal'
 		});
 		job.schedule('in 1 second');
 		await job.save();
 
-		await agenda.start();
+		await chronos.start();
 
 		let jobStarted;
 		let retried = 0;
 		// wait till it's locked (Picked up by the event processor)
 		do {
-			jobStarted = await agenda.db.getJobs({ name: 'test' });
+			jobStarted = await chronos.db.getJobs({ name: 'test' });
 			if (!jobStarted[0].lockedAt) {
 				delay(100);
 			}
@@ -1636,7 +1636,7 @@ describe('Job', () => {
 
 		let error;
 		const completed = new Promise<void>(resolve => {
-			agenda.on('error', err => {
+			chronos.on('error', err => {
 				error = err;
 				resolve();
 			});
@@ -1658,7 +1658,7 @@ describe('Job', () => {
 
 	describe('job fork mode', () => {
 		it('runs a job in fork mode', async () => {
-			const agendaFork = new Agenda({
+			const agendaFork = new Chronos({
 				mongo: mongoDb,
 				forkHelper: {
 					path: './test/helpers/forkHelper.ts',
@@ -1676,7 +1676,7 @@ describe('Job', () => {
 			job.schedule('now');
 			await job.save();
 
-			const jobData = await agenda.db.getJobById(job.attrs._id as any);
+			const jobData = await chronos.db.getJobById(job.attrs._id as any);
 
 			if (!jobData) {
 				throw new Error('job not found');
@@ -1694,14 +1694,14 @@ describe('Job', () => {
 				await delay(50);
 			} while (await job.isRunning());
 
-			const jobDataFinished = await agenda.db.getJobById(job.attrs._id as any);
+			const jobDataFinished = await chronos.db.getJobById(job.attrs._id as any);
 			expect(jobDataFinished?.lastFinishedAt).to.not.be.eq(undefined);
 			expect(jobDataFinished?.failReason).to.be.eq(null);
 			expect(jobDataFinished?.failCount).to.be.eq(null);
 		});
 
 		it('runs a job in fork mode, but let it fail', async () => {
-			const agendaFork = new Agenda({
+			const agendaFork = new Chronos({
 				mongo: mongoDb,
 				forkHelper: {
 					path: './test/helpers/forkHelper.ts',
@@ -1719,7 +1719,7 @@ describe('Job', () => {
 			job.schedule('now');
 			await job.save();
 
-			const jobData = await agenda.db.getJobById(job.attrs._id as any);
+			const jobData = await chronos.db.getJobById(job.attrs._id as any);
 
 			if (!jobData) {
 				throw new Error('job not found');
@@ -1737,14 +1737,14 @@ describe('Job', () => {
 				await delay(50);
 			} while (await job.isRunning());
 
-			const jobDataFinished = await agenda.db.getJobById(job.attrs._id as any);
+			const jobDataFinished = await chronos.db.getJobById(job.attrs._id as any);
 			expect(jobDataFinished?.lastFinishedAt).to.not.be.eq(undefined);
 			expect(jobDataFinished?.failReason).to.not.be.eq(null);
 			expect(jobDataFinished?.failCount).to.be.eq(1);
 		});
 
 		it('runs a job in fork mode, but let it die', async () => {
-			const agendaFork = new Agenda({
+			const agendaFork = new Chronos({
 				mongo: mongoDb,
 				forkHelper: {
 					path: './test/helpers/forkHelper.ts',
@@ -1762,7 +1762,7 @@ describe('Job', () => {
 			job.schedule('now');
 			await job.save();
 
-			const jobData = await agenda.db.getJobById(job.attrs._id as any);
+			const jobData = await chronos.db.getJobById(job.attrs._id as any);
 
 			if (!jobData) {
 				throw new Error('job not found');
@@ -1780,7 +1780,7 @@ describe('Job', () => {
 				await delay(50);
 			} while (await job.isRunning());
 
-			const jobDataFinished = await agenda.db.getJobById(job.attrs._id as any);
+			const jobDataFinished = await chronos.db.getJobById(job.attrs._id as any);
 			expect(jobDataFinished?.lastFinishedAt).to.not.be.eq(undefined);
 			expect(jobDataFinished?.failReason).to.not.be.eq(null);
 			expect(jobDataFinished?.failCount).to.be.eq(1);

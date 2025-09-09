@@ -2,7 +2,7 @@
 .idea
 .jsdoc.json
 .travis.yml
-agenda.svg
+chronos.svg
 docs
 .nyc_output
 coverage

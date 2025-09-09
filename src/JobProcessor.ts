@@ -1,12 +1,12 @@
 import * as debug from 'debug';
 import type { IAgendaJobStatus, IAgendaStatus } from './types/AgendaStatus';
 import type { IJobDefinition } from './types/JobDefinition';
-import type { Agenda, JobWithId } from './index';
+import type { Chronos, JobWithId } from './index';
 import type { IJobParameters } from './types/JobParameters';
 import { Job } from './Job';
 import { JobProcessingQueue } from './JobProcessingQueue';
 
-const log = debug('agenda:jobProcessor');
+const log = debug('chronos:jobProcessor');
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require
 const { version: agendaVersion } = require('../package.json');
@@ -29,15 +29,15 @@ export class JobProcessor {
 			// eslint-disable-next-line no-param-reassign
 			obj[key] = {
 				...this.jobStatus[key],
-				config: this.agenda.definitions[key]
+				config: this.chronos.definitions[key]
 			};
 			return obj;
 		}, {}) as IAgendaJobStatus;
 
 		return {
 			version: agendaVersion,
-			queueName: this.agenda.attrs.name,
-			totalQueueSizeDB: await this.agenda.db.getQueueSize(),
+			queueName: this.chronos.attrs.name,
+			totalQueueSizeDB: await this.chronos.db.getQueueSize(),
 			internal: {
 				localQueueProcessing: this.localQueueProcessing
 			},
@@ -50,34 +50,34 @@ export class JobProcessor {
 			queuedJobs: !fullDetails
 				? this.jobQueue.length
 				: this.jobQueue.getQueue().map(job => ({
-						...job.toJson(),
-						canceled: job.getCanceledMessage()
-				  })),
+					...job.toJson(),
+					canceled: job.getCanceledMessage()
+				})),
 			runningJobs: !fullDetails
 				? this.runningJobs.length
 				: this.runningJobs.map(job => ({
-						...job.toJson(),
-						canceled: job.getCanceledMessage()
-				  })),
+					...job.toJson(),
+					canceled: job.getCanceledMessage()
+				})),
 			lockedJobs: !fullDetails
 				? this.lockedJobs.length
 				: this.lockedJobs.map(job => ({
-						...job.toJson(),
-						canceled: job.getCanceledMessage()
-				  })),
+					...job.toJson(),
+					canceled: job.getCanceledMessage()
+				})),
 			jobsToLock: !fullDetails
 				? this.jobsToLock.length
 				: this.jobsToLock.map(job => ({
-						...job.toJson(),
-						canceled: job.getCanceledMessage()
-				  })),
+					...job.toJson(),
+					canceled: job.getCanceledMessage()
+				})),
 			isLockingOnTheFly: this.isLockingOnTheFly
 		};
 	}
 
 	private nextScanAt = new Date();
 
-	private jobQueue: JobProcessingQueue = new JobProcessingQueue(this.agenda);
+	private jobQueue: JobProcessingQueue = new JobProcessingQueue(this.chronos);
 
 	private runningJobs: JobWithId[] = [];
 
@@ -94,7 +94,7 @@ export class JobProcessor {
 	private processInterval?: ReturnType<typeof setInterval>;
 
 	constructor(
-		private agenda: Agenda,
+		private chronos: Chronos,
 		private maxConcurrency: number,
 		private totalLockLimit: number,
 		private processEvery: number
@@ -119,7 +119,7 @@ export class JobProcessor {
 	// processJobs
 	async process(extraJob?: JobWithId): Promise<void> {
 		// Make sure an interval has actually been set
-		// Prevents race condition with 'Agenda.stop' and already scheduled run
+		// Prevents race condition with 'Chronos.stop' and already scheduled run
 		if (!this.isRunning) {
 			log.extend('process')('JobProcessor got stopped already, returning');
 			return;
@@ -129,16 +129,16 @@ export class JobProcessor {
 		if (!extraJob) {
 			log.extend('process')('starting to process jobs');
 
-			// Go through each jobName set in 'Agenda.process' and fill the queue with the next jobs
+			// Go through each jobName set in 'Chronos.process' and fill the queue with the next jobs
 			await Promise.all(
-				Object.keys(this.agenda.definitions).map(async jobName => {
+				Object.keys(this.chronos.definitions).map(async jobName => {
 					log.extend('process')('queuing up job to process: [%s]', jobName);
 					await this.jobQueueFilling(jobName);
 				})
 			);
 			this.jobProcessing();
 		} else if (
-			this.agenda.definitions[extraJob.attrs.name] &&
+			this.chronos.definitions[extraJob.attrs.name] &&
 			// If the extraJob would have been processed in an older scan, process the job immediately
 			extraJob.attrs.nextRunAt &&
 			extraJob.attrs.nextRunAt < this.nextScanAt
@@ -161,7 +161,7 @@ export class JobProcessor {
 	 * @returns {boolean} whether or not you should lock job
 	 */
 	shouldLock(name: string): boolean {
-		const jobDefinition = this.agenda.definitions[name];
+		const jobDefinition = this.chronos.definitions[name];
 		let shouldLock = true;
 		// global lock limit
 		if (this.totalLockLimit && this.lockedJobs.length >= this.totalLockLimit) {
@@ -236,7 +236,7 @@ export class JobProcessor {
 				}
 
 				// Lock the job in MongoDB!
-				const resp = await this.agenda.db.lockJob(job);
+				const resp = await this.chronos.db.lockJob(job);
 
 				if (resp) {
 					if (job.attrs.name !== resp.name) {
@@ -245,7 +245,7 @@ export class JobProcessor {
 						);
 					}
 
-					const jobToEnqueue = new Job(this.agenda, resp, true) as JobWithId;
+					const jobToEnqueue = new Job(this.chronos, resp, true) as JobWithId;
 
 					// Before en-queing job make sure we haven't exceed our lock limits
 					if (!this.shouldLock(jobToEnqueue.attrs.name)) {
@@ -253,7 +253,7 @@ export class JobProcessor {
 							'lock limit reached while job was locked in database. Releasing lock on [%s]',
 							jobToEnqueue.attrs.name
 						);
-						this.agenda.db.unlockJob(jobToEnqueue);
+						this.chronos.db.unlockJob(jobToEnqueue);
 
 						this.jobsToLock = [];
 						return;
@@ -291,14 +291,14 @@ export class JobProcessor {
 		);
 
 		// Find ONE and ONLY ONE job and set the 'lockedAt' time so that job begins to be processed
-		const result = await this.agenda.db.getNextJobToRun(jobName, this.nextScanAt, lockDeadline);
+		const result = await this.chronos.db.getNextJobToRun(jobName, this.nextScanAt, lockDeadline);
 
 		if (result) {
 			log.extend('findAndLockNextJob')(
-				'found a job available to lock, creating a new job on Agenda with id [%s]',
+				'found a job available to lock, creating a new job on Chronos with id [%s]',
 				result._id
 			);
-			return new Job(this.agenda, result, true) as JobWithId;
+			return new Job(this.chronos, result, true) as JobWithId;
 		}
 
 		return undefined;
@@ -324,7 +324,7 @@ export class JobProcessor {
 			this.nextScanAt = new Date(now.valueOf() + this.processEvery);
 
 			// For this job name, find the next job to run and lock it!
-			const job = await this.findAndLockNextJob(name, this.agenda.definitions[name]);
+			const job = await this.findAndLockNextJob(name, this.chronos.definitions[name]);
 
 			// Still have the job?
 			// 1. Add it to lock list
@@ -344,7 +344,7 @@ export class JobProcessor {
 						'lock limit reached before job was returned. Releasing lock on [%s]',
 						name
 					);
-					this.agenda.db.unlockJob(job);
+					this.chronos.db.unlockJob(job);
 					return;
 				}
 
@@ -363,7 +363,7 @@ export class JobProcessor {
 			}
 		} catch (error) {
 			log.extend('jobQueueFilling')('[%s] job lock failed while filling queue', name, error);
-			this.agenda.emit('error', error);
+			this.chronos.emit('error', error);
 		} finally {
 			this.isJobQueueFilling.delete(name);
 		}
@@ -487,7 +487,7 @@ export class JobProcessor {
 			return;
 		}
 
-		const jobDefinition = this.agenda.definitions[job.attrs.name];
+		const jobDefinition = this.chronos.definitions[job.attrs.name];
 		const status = this.jobStatus[job.attrs.name];
 
 		if (
@@ -504,7 +504,7 @@ export class JobProcessor {
 
 				// check if the job is still alive
 				const checkIfJobIsStillAlive = () =>
-					// check every "this.agenda.definitions[job.attrs.name].lockLifetime / 2"" (or at mininum every processEvery)
+					// check every "this.chronos.definitions[job.attrs.name].lockLifetime / 2"" (or at mininum every processEvery)
 					new Promise<void>((resolve, reject) => {
 						setTimeout(async () => {
 							// when job is not running anymore, just finish
@@ -527,8 +527,7 @@ export class JobProcessor {
 
 								reject(
 									new Error(
-										`execution of '${job.attrs.name}' canceled, execution took more than ${
-											this.agenda.definitions[job.attrs.name].lockLifetime
+										`execution of '${job.attrs.name}' canceled, execution took more than ${this.chronos.definitions[job.attrs.name].lockLifetime
 										}ms. Call touch() for long running jobs to keep them alive.`
 									)
 								);
@@ -551,7 +550,7 @@ export class JobProcessor {
 							}
 
 							resolve(checkIfJobIsStillAlive());
-						}, Math.max(this.processEvery / 2, this.agenda.definitions[job.attrs.name].lockLifetime / 2));
+						}, Math.max(this.processEvery / 2, this.chronos.definitions[job.attrs.name].lockLifetime / 2));
 					});
 				// CALL THE ACTUAL METHOD TO PROCESS THE JOB!!!
 				await Promise.race([job.run(), checkIfJobIsStillAlive()]);
@@ -580,7 +579,7 @@ export class JobProcessor {
 					job.attrs._id,
 					error
 				);
-				this.agenda.emit('error', error);
+				this.chronos.emit('error', error);
 			} finally {
 				jobIsRunning = false;
 

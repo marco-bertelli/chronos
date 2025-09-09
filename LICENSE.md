@@ -5,6 +5,8 @@ Copyright (c) 2013 Ryan Schmukler <ryan@slingingcode.com>
 
 Copyright (c) 2022 Simon Tretter <simon.tretter@hokify.com>
 
+Copyright (c) 2025 Marco Bertelli <marcobert37@gmail.com>
+
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the 'Software'), to deal in
 the Software without restriction, including without limitation the rights to

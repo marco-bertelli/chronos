@@ -11,12 +11,12 @@ import {
 	UpdateFilter
 } from 'mongodb';
 import type { Job, JobWithId } from './Job';
-import type { Agenda } from './index';
+import type { Chronos } from './index';
 import type { IDatabaseOptions, IDbConfig, IMongoOptions } from './types/DbOptions';
 import type { IJobParameters } from './types/JobParameters';
 import { hasMongoProtocol } from './utils/hasMongoProtocol';
 
-const log = debug('agenda:db');
+const log = debug('chronos:db');
 
 /**
  * @class
@@ -25,7 +25,7 @@ export class JobDbRepository {
 	collection: Collection<IJobParameters>;
 
 	constructor(
-		private agenda: Agenda,
+		private chronos: Chronos,
 		private connectOptions: (IDatabaseOptions | IMongoOptions) & IDbConfig
 	) {
 		this.connectOptions.sort = this.connectOptions.sort || { nextRunAt: 1, priority: -1 };
@@ -131,19 +131,19 @@ export class JobDbRepository {
 		 * Query used to find job to run
 		 */
 		const JOB_PROCESS_WHERE_QUERY: Filter<IJobParameters /* Omit<IJobParameters, 'lockedAt'> & { lockedAt?: Date | null } */> =
-			{
-				name: jobName,
-				disabled: { $ne: true },
-				$or: [
-					{
-						lockedAt: { $eq: null as any },
-						nextRunAt: { $lte: nextScanAt }
-					},
-					{
-						lockedAt: { $lte: lockDeadline }
-					}
-				]
-			};
+		{
+			name: jobName,
+			disabled: { $ne: true },
+			$or: [
+				{
+					lockedAt: { $eq: null as any },
+					nextRunAt: { $lte: nextScanAt }
+				},
+				{
+					lockedAt: { $lte: lockDeadline }
+				}
+			]
+		};
 
 		/**
 		 * Query used to set a job as locked
@@ -172,15 +172,14 @@ export class JobDbRepository {
 		const db = await this.createConnection();
 		log('successful connection to MongoDB', db.options);
 
-		const collection = this.connectOptions.db?.collection || 'agendaJobs';
+		const collection = this.connectOptions.db?.collection || 'chronosJobs';
 
 		this.collection = db.collection(collection);
 		if (log.enabled) {
 			log(
-				`connected with collection: ${collection}, collection size: ${
-					typeof this.collection.estimatedDocumentCount === 'function'
-						? await this.collection.estimatedDocumentCount()
-						: '?'
+				`connected with collection: ${collection}, collection size: ${typeof this.collection.estimatedDocumentCount === 'function'
+					? await this.collection.estimatedDocumentCount()
+					: '?'
 				}`
 			);
 		}
@@ -206,7 +205,7 @@ export class JobDbRepository {
 			}
 		}
 
-		this.agenda.emit('ready');
+		this.chronos.emit('ready');
 	}
 
 	private async database(url: string, options?: MongoClientOptions) {
@@ -238,7 +237,7 @@ export class JobDbRepository {
 			job.attrs.nextRunAt = res.nextRunAt;
 
 			// check if we should process the job immediately
-			this.agenda.emit('processJob', job);
+			this.chronos.emit('processJob', job);
 		}
 
 		// Return the Job instance
@@ -276,7 +275,7 @@ export class JobDbRepository {
 
 	/**
 	 * Save the properties on a job to MongoDB
-	 * @name Agenda#saveJob
+	 * @name Chronos#saveJob
 	 * @function
 	 * @param {Job} job job to save into MongoDB
 	 * @returns {Promise} resolves when job is saved or errors
@@ -293,8 +292,8 @@ export class JobDbRepository {
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { _id, unique, uniqueOpts, ...props } = {
 				...job.toJson(),
-				// Store name of agenda queue as last modifier in job data
-				lastModifiedBy: this.agenda.attrs.name
+				// Store name of chronos queue as last modifier in job data
+				lastModifiedBy: this.chronos.attrs.name
 			};
 
 			log('[job %s] set job props: \n%O', id, props);
@@ -357,10 +356,9 @@ export class JobDbRepository {
 					}
 				);
 				log(
-					`findOneAndUpdate(${props.name}) with type "single" ${
-						result.lastErrorObject?.updatedExisting
-							? 'updated existing entry'
-							: 'inserted new entry'
+					`findOneAndUpdate(${props.name}) with type "single" ${result.lastErrorObject?.updatedExisting
+						? 'updated existing entry'
+						: 'inserted new entry'
 					}`
 				);
 				return this.processDbResult(job, result.value as IJobParameters<DATA>);

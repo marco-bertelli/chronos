@@ -7,7 +7,7 @@ import humanInterval = require('human-interval');
 import { isValidDate } from './isValidDate';
 import type { IJobParameters } from '../types/JobParameters';
 
-const log = debug('agenda:nextRunAt');
+const log = debug('chronos:nextRunAt');
 
 const dateForTimezone = (timezoneDate: Date, timezone?: string): DateTime =>
 	DateTime.fromJSDate(timezoneDate, { zone: timezone });
@@ -72,8 +72,7 @@ export const computeFromInterval = (attrs: IJobParameters<any>): Date => {
 			attrs._id
 		);
 		throw new Error(
-			`failed to calculate nextRunAt due to invalid repeat interval (${attrs.repeatInterval}): ${
-				error || 'no readable human interval'
+			`failed to calculate nextRunAt due to invalid repeat interval (${attrs.repeatInterval}): ${error || 'no readable human interval'
 			}`
 		);
 	}

@@ -1,7 +1,7 @@
 /**
  * @file Illustrate concurrency and locking
  */
-import Agenda from 'agenda';
+import Chronos from 'chronos';
 
 function time() {
   return new Date().toTimeString().split(' ')[0];
@@ -13,22 +13,22 @@ function sleep(ms) {
   });
 }
 
-const agenda = new Agenda({
+const chronos = new Chronos({
   db: {
-    address: 'mongodb://127.0.0.1/agenda',
+    address: 'mongodb://127.0.0.1/chronos',
     options: { useNewUrlParser: true },
-    collection: `agendaJobs-${Math.random()}` // Start fresh every time
+    collection: `chronosJobs-${Math.random()}` // Start fresh every time
   }
 });
 
 let jobRunCount = 1;
-agenda.define(
+chronos.define(
   'long-running job',
   {
     lockLifetime: 5 * 1000, // Max amount of time the job should take
     concurrency: 3 // Max number of job instances to run at the same time
   },
-  async(job, done) => {
+  async (job, done) => {
     const thisJob = jobRunCount++;
     console.log(`#${thisJob} started`);
 
@@ -40,7 +40,7 @@ agenda.define(
   // Imagine a job that takes 8 seconds. That is longer than the lockLifetime, so
   // we'll break it into smaller chunks (or set its lockLifetime to a higher value).
   await sleep(4 * 1000);  // 4000 < lockLifetime of 5000, so the job still has time to finish
-  await job.touch();      // tell Agenda the job is still running, which resets the lock timeout
+  await job.touch();      // tell Chronos the job is still running, which resets the lock timeout
   await sleep(4 * 1000);  // do another chunk of work that takes less than the lockLifetime
   */
 
@@ -52,20 +52,20 @@ agenda.define(
   }
 );
 
-(async function() {
-  console.log(time(), 'Agenda started');
-  agenda.processEvery('1 second');
-  await agenda.start();
-  await agenda.every('1 second', 'long-running job');
+(async function () {
+  console.log(time(), 'Chronos started');
+  chronos.processEvery('1 second');
+  await chronos.start();
+  await chronos.every('1 second', 'long-running job');
 
   // Log job start and completion/failure
-  agenda.on('start', (job) => {
+  chronos.on('start', (job) => {
     console.log(time(), `Job <${job.attrs.name}> starting`);
   });
-  agenda.on('success', (job) => {
+  chronos.on('success', (job) => {
     console.log(time(), `Job <${job.attrs.name}> succeeded`);
   });
-  agenda.on('fail', (error, job) => {
+  chronos.on('fail', (error, job) => {
     console.log(time(), `Job <${job.attrs.name}> failed:`, error);
   });
 })();

@@ -1,10 +1,10 @@
-import { Agenda } from '../../src';
+import { Chronos } from '../../src';
 import addTests from './add-tests';
 
 const connStr = process.argv[2];
 const tests = process.argv.slice(3);
 
-const agenda = new Agenda(
+const chronos = new Chronos(
 	{
 		db: {
 			address: connStr
@@ -13,10 +13,10 @@ const agenda = new Agenda(
 	},
 	async () => {
 		tests.forEach(test => {
-			addTests[test](agenda);
+			addTests[test](chronos);
 		});
 
-		await agenda.start();
+		await chronos.start();
 
 		// Ensure we can shut down the process from tests
 		process.on('message', msg => {

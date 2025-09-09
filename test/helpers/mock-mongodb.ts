@@ -2,7 +2,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient } from 'mongodb';
 import * as debug from 'debug';
 
-const log = debug('agenda:mock-mongodb');
+const log = debug('chronos:mock-mongodb');
 
 export interface IMockMongo {
 	disconnect: () => void;

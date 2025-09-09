@@ -16,7 +16,7 @@ import { JobProcessor } from './JobProcessor';
 import { calculateProcessEvery } from './utils/processEvery';
 import { getCallerFilePath } from './utils/stack';
 
-const log = debug('agenda');
+const log = debug('chronos');
 
 const DefaultOptions = {
 	processEvery: 5000,
@@ -32,7 +32,7 @@ const DefaultOptions = {
 /**
  * @class
  */
-export class Agenda extends EventEmitter {
+export class Chronos extends EventEmitter {
 	readonly attrs: IAgendaConfig & IDbConfig;
 
 	public readonly forkedWorker?: boolean;
@@ -87,14 +87,14 @@ export class Agenda extends EventEmitter {
 
 	async getRunningStats(fullDetails = false): Promise<IAgendaStatus> {
 		if (!this.jobProcessor) {
-			throw new Error('agenda not running!');
+			throw new Error('chronos not running!');
 		}
 		return this.jobProcessor.getStatus(fullDetails);
 	}
 
 	/**
-	 * @param {Object} config - Agenda Config
-	 * @param {Function} cb - Callback after Agenda has started and connected to mongo
+	 * @param {Object} config - Chronos Config
+	 * @param {Function} cb - Callback after Chronos has started and connected to mongo
 	 */
 	constructor(
 		config: {
@@ -150,18 +150,18 @@ export class Agenda extends EventEmitter {
 		address: string,
 		collection?: string,
 		options?: MongoClientOptions
-	): Promise<Agenda> {
+	): Promise<Chronos> {
 		this.db = new JobDbRepository(this, { db: { address, collection, options } });
 		await this.db.connect();
 		return this;
 	}
 
 	/**
-	 * Use existing mongo connectino to pass into agenda
+	 * Use existing mongo connectino to pass into chronos
 	 * @param mongo
 	 * @param collection
 	 */
-	async mongo(mongo: Db, collection?: string): Promise<Agenda> {
+	async mongo(mongo: Db, collection?: string): Promise<Chronos> {
 		this.db = new JobDbRepository(this, { mongo, db: { collection } });
 		await this.db.connect();
 		return this;
@@ -172,8 +172,8 @@ export class Agenda extends EventEmitter {
 	 * Default is { nextRunAt: 1, priority: -1 }
 	 * @param query
 	 */
-	sort(query: { [key: string]: SortDirection }): Agenda {
-		log('Agenda.sort([Object])');
+	sort(query: { [key: string]: SortDirection }): Chronos {
+		log('Chronos.sort([Object])');
 		this.attrs.sort = query;
 		return this;
 	}
@@ -189,7 +189,7 @@ export class Agenda extends EventEmitter {
 	 * @param query
 	 */
 	async cancel(query: Filter<IJobParameters>): Promise<number> {
-		log('attempting to cancel all Agenda jobs', query);
+		log('attempting to cancel all Chronos jobs', query);
 		try {
 			const amountOfRemovedJobs = await this.db.removeJobs(query);
 			log('%s jobs cancelled', amountOfRemovedJobs);
@@ -204,8 +204,8 @@ export class Agenda extends EventEmitter {
 	 * Set name of queue
 	 * @param name
 	 */
-	name(name: string): Agenda {
-		log('Agenda.name(%s)', name);
+	name(name: string): Chronos {
+		log('Chronos.name(%s)', name);
 		this.attrs.name = name;
 		return this;
 	}
@@ -214,13 +214,13 @@ export class Agenda extends EventEmitter {
 	 * Set the time how often the job processor checks for new jobs to process
 	 * @param time
 	 */
-	processEvery(time: string | number): Agenda {
+	processEvery(time: string | number): Chronos {
 		if (this.jobProcessor) {
 			throw new Error(
 				'job processor is already running, you need to set processEvery before calling start'
 			);
 		}
-		log('Agenda.processEvery(%d)', time);
+		log('Chronos.processEvery(%d)', time);
 		this.attrs.processEvery = calculateProcessEvery(time);
 		return this;
 	}
@@ -229,8 +229,8 @@ export class Agenda extends EventEmitter {
 	 * Set the concurrency for jobs (globally), type does not matter
 	 * @param num
 	 */
-	maxConcurrency(num: number): Agenda {
-		log('Agenda.maxConcurrency(%d)', num);
+	maxConcurrency(num: number): Chronos {
+		log('Chronos.maxConcurrency(%d)', num);
 		this.attrs.maxConcurrency = num;
 		return this;
 	}
@@ -239,8 +239,8 @@ export class Agenda extends EventEmitter {
 	 * Set the default concurrency for each job
 	 * @param num number of max concurrency
 	 */
-	defaultConcurrency(num: number): Agenda {
-		log('Agenda.defaultConcurrency(%d)', num);
+	defaultConcurrency(num: number): Chronos {
+		log('Chronos.defaultConcurrency(%d)', num);
 		this.attrs.defaultConcurrency = num;
 		return this;
 	}
@@ -249,8 +249,8 @@ export class Agenda extends EventEmitter {
 	 * Set the default amount jobs that are allowed to be locked at one time (GLOBAL)
 	 * @param num
 	 */
-	lockLimit(num: number): Agenda {
-		log('Agenda.lockLimit(%d)', num);
+	lockLimit(num: number): Chronos {
+		log('Chronos.lockLimit(%d)', num);
 		this.attrs.lockLimit = num;
 		return this;
 	}
@@ -259,8 +259,8 @@ export class Agenda extends EventEmitter {
 	 * Set default lock limit per job type
 	 * @param num
 	 */
-	defaultLockLimit(num: number): Agenda {
-		log('Agenda.defaultLockLimit(%d)', num);
+	defaultLockLimit(num: number): Chronos {
+		log('Chronos.defaultLockLimit(%d)', num);
 		this.attrs.defaultLockLimit = num;
 		return this;
 	}
@@ -270,8 +270,8 @@ export class Agenda extends EventEmitter {
 	 * Default is 10 * 60 * 1000 ms (10 minutes)
 	 * @param ms
 	 */
-	defaultLockLifetime(ms: number): Agenda {
-		log('Agenda.defaultLockLifetime(%d)', ms);
+	defaultLockLifetime(ms: number): Chronos {
+		log('Chronos.defaultLockLifetime(%d)', ms);
 		this.attrs.defaultLockLifetime = ms;
 		return this;
 	}
@@ -300,7 +300,7 @@ export class Agenda extends EventEmitter {
 	 */
 	async purge(): Promise<number> {
 		const definedNames = Object.keys(this.definitions);
-		log('Agenda.purge(%o)', definedNames);
+		log('Chronos.purge(%o)', definedNames);
 		return this.cancel({ name: { $not: { $in: definedNames } } });
 	}
 
@@ -336,7 +336,7 @@ export class Agenda extends EventEmitter {
 		}
 	): void {
 		if (this.definitions[name]) {
-			log('overwriting already defined agenda job', name);
+			log('overwriting already defined chronos job', name);
 		}
 
 		const filePath = getCallerFilePath();
@@ -383,7 +383,7 @@ export class Agenda extends EventEmitter {
 	create(name: string): Job<void>;
 	create<DATA = unknown>(name: string, data: DATA): Job<DATA>;
 	create(name: string, data?: unknown): Job<any> {
-		log('Agenda.create(%s, [Object])', name);
+		log('Chronos.create(%s, [Object])', name);
 		const priority = this.definitions[name] ? this.definitions[name].priority : 0;
 		const job = new Job(this, { name, data, type: 'normal', priority });
 		return job;
@@ -434,7 +434,7 @@ export class Agenda extends EventEmitter {
 		 * @param {Object} options options to run job for
 		 * @returns {Job} instance of job
 		 */
-		log('Agenda.every(%s, %O, %O)', interval, names, options);
+		log('Chronos.every(%s, %O, %O)', interval, names, options);
 
 		const createJob = async (name: string): Promise<Job> => {
 			const job = this.create(name, data);
@@ -454,7 +454,7 @@ export class Agenda extends EventEmitter {
 			return job;
 		}
 
-		log('Agenda.every(%s, %s, %O)', interval, names, options);
+		log('Chronos.every(%s, %s, %O)', interval, names, options);
 		const jobs = await this.createJobs(names, createJob);
 
 		return jobs;
@@ -487,11 +487,11 @@ export class Agenda extends EventEmitter {
 		};
 
 		if (typeof names === 'string') {
-			log('Agenda.schedule(%s, %O, [%O])', when, names);
+			log('Chronos.schedule(%s, %O, [%O])', when, names);
 			return createJob(names);
 		}
 
-		log('Agenda.schedule(%s, %O, [%O])', when, names);
+		log('Chronos.schedule(%s, %O, [%O])', when, names);
 		return this.createJobs(names, createJob);
 	}
 
@@ -502,7 +502,7 @@ export class Agenda extends EventEmitter {
 	async now<DATA = void>(name: string): Promise<Job<DATA>>;
 	async now<DATA = unknown>(name: string, data: DATA): Promise<Job<DATA>>;
 	async now<DATA>(name: string, data?: DATA): Promise<Job<DATA | void>> {
-		log('Agenda.now(%s, [Object])', name);
+		log('Chronos.now(%s, [Object])', name);
 		try {
 			const job = this.create(name, data);
 
@@ -522,12 +522,12 @@ export class Agenda extends EventEmitter {
 	 */
 	async start(): Promise<void> {
 		log(
-			'Agenda.start called, waiting for agenda to be initialized (db connection)',
+			'Chronos.start called, waiting for chronos to be initialized (db connection)',
 			this.attrs.processEvery
 		);
 		await this.ready;
 		if (this.jobProcessor) {
-			log('Agenda.start was already called, ignoring');
+			log('Chronos.start was already called, ignoring');
 			return;
 		}
 
@@ -546,15 +546,15 @@ export class Agenda extends EventEmitter {
 	 */
 	async stop(): Promise<void> {
 		if (!this.jobProcessor) {
-			log('Agenda.stop called, but agenda has never started!');
+			log('Chronos.stop called, but chronos has never started!');
 			return;
 		}
 
-		log('Agenda.stop called, clearing interval for processJobs()');
+		log('Chronos.stop called, clearing interval for processJobs()');
 
 		const lockedJobs = this.jobProcessor.stop();
 
-		log('Agenda._unlockJobs()');
+		log('Chronos._unlockJobs()');
 		const jobIds = lockedJobs?.map(job => job.attrs._id) || [];
 
 		if (jobIds.length > 0) {

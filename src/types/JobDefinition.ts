@@ -7,7 +7,7 @@ export interface IJobDefinition<DATA = unknown> {
 	lockLifetime: number;
 	/** Higher priority jobs will run first. */
 	priority?: number;
-	/** how many jobs of this kind can run in parallel/simultanously per Agenda instance */
+	/** how many jobs of this kind can run in parallel/simultanously per Chronos instance */
 	concurrency?: number;
 
 	filePath: string | undefined;

@@ -2,13 +2,13 @@ import * as date from 'date.js';
 import * as debug from 'debug';
 import { ObjectId } from 'mongodb';
 import { ChildProcess, fork } from 'child_process';
-import type { Agenda } from './index';
+import type { Chronos } from './index';
 import type { DefinitionProcessor } from './types/JobDefinition';
 import { IJobParameters, datefields, TJobDatefield } from './types/JobParameters';
 import { JobPriority, parsePriority } from './utils/priority';
 import { computeFromInterval, computeFromRepeatAt } from './utils/nextRunAt';
 
-const log = debug('agenda:job');
+const log = debug('chronos:job');
 
 /**
  * @class
@@ -48,12 +48,12 @@ export class Job<DATA = unknown | void> {
 
 	/**
 	 * creates a new job object
-	 * @param agenda
+	 * @param chronos
 	 * @param args
 	 * @param byJobProcessor
 	 */
 	constructor(
-		agenda: Agenda,
+		chronos: Chronos,
 		args: Partial<IJobParameters<void>> & {
 			name: string;
 			type: 'normal' | 'single';
@@ -61,7 +61,7 @@ export class Job<DATA = unknown | void> {
 		byJobProcessor?: boolean
 	);
 	constructor(
-		agenda: Agenda,
+		chronos: Chronos,
 		args: Partial<IJobParameters<DATA>> & {
 			name: string;
 			type: 'normal' | 'single';
@@ -70,7 +70,7 @@ export class Job<DATA = unknown | void> {
 		byJobProcessor?: boolean
 	);
 	constructor(
-		readonly agenda: Agenda,
+		readonly chronos: Chronos,
 		args: Partial<IJobParameters<DATA>> & {
 			name: string;
 			type: 'normal' | 'single';
@@ -220,7 +220,7 @@ export class Job<DATA = unknown | void> {
 	}
 
 	private async fetchStatus(): Promise<void> {
-		const dbJob = await this.agenda.db.getJobs({ _id: this.attrs._id });
+		const dbJob = await this.chronos.db.getJobs({ _id: this.attrs._id });
 		if (!dbJob || dbJob.length === 0) {
 			// @todo: should we just return false instead? a finished job could have been removed from database,
 			// and then this would throw...
@@ -268,21 +268,21 @@ export class Job<DATA = unknown | void> {
 	 * Saves a job to database
 	 */
 	async save(): Promise<Job> {
-		if (this.agenda.forkedWorker) {
+		if (this.chronos.forkedWorker) {
 			const warning = new Error('calling save() on a Job during a forkedWorker has no effect!');
 			console.warn(warning.message, warning.stack);
 			return this as Job;
 		}
 		// ensure db connection is ready
-		await this.agenda.ready;
-		return this.agenda.db.saveJob(this as Job);
+		await this.chronos.ready;
+		return this.chronos.db.saveJob(this as Job);
 	}
 
 	/**
 	 * Remove the job from database
 	 */
 	remove(): Promise<number> {
-		return this.agenda.cancel({ _id: this.attrs._id });
+		return this.chronos.cancel({ _id: this.attrs._id });
 	}
 
 	async isDead(): Promise<boolean> {
@@ -296,7 +296,7 @@ export class Job<DATA = unknown | void> {
 			await this.fetchStatus();
 		}
 
-		const definition = this.agenda.definitions[this.attrs.name];
+		const definition = this.chronos.definitions[this.attrs.name];
 
 		const lockDeadline = new Date(Date.now() - definition.lockLifetime);
 
@@ -319,7 +319,7 @@ export class Job<DATA = unknown | void> {
 		this.attrs.lockedAt = new Date();
 		this.attrs.progress = progress;
 
-		await this.agenda.db.saveJobState(this);
+		await this.chronos.db.saveJobState(this);
 	}
 
 	private computeNextRunAt() {
@@ -361,18 +361,18 @@ export class Job<DATA = unknown | void> {
 			this.attrs.lastRunAt.toISOString()
 		);
 		this.computeNextRunAt();
-		await this.agenda.db.saveJobState(this);
+		await this.chronos.db.saveJobState(this);
 
 		try {
-			this.agenda.emit('start', this);
-			this.agenda.emit(`start:${this.attrs.name}`, this);
+			this.chronos.emit('start', this);
+			this.chronos.emit(`start:${this.attrs.name}`, this);
 			log('[%s:%s] starting job', this.attrs.name, this.attrs._id);
 
 			if (this.attrs.fork) {
-				if (!this.agenda.forkHelper) {
+				if (!this.chronos.forkHelper) {
 					throw new Error('no forkHelper specified, you need to set a path to a helper script');
 				}
-				const { forkHelper } = this.agenda;
+				const { forkHelper } = this.chronos;
 
 				await new Promise<void>((resolve, reject) => {
 					this.forkedChild = fork(
@@ -380,7 +380,7 @@ export class Job<DATA = unknown | void> {
 						[
 							this.attrs.name,
 							this.attrs._id!.toString(),
-							this.agenda.definitions[this.attrs.name].filePath || ''
+							this.chronos.definitions[this.attrs.name].filePath || ''
 						],
 						forkHelper.options
 					);
@@ -393,7 +393,7 @@ export class Job<DATA = unknown | void> {
 								forkHelper,
 								this.attrs.name,
 								this.attrs._id,
-								this.agenda.definitions[this.attrs.name].filePath
+								this.chronos.definitions[this.attrs.name].filePath
 							);
 							const error = new Error(`child process exited with code: ${code}`);
 							console.warn(error.message, childError || this.canceled);
@@ -421,22 +421,22 @@ export class Job<DATA = unknown | void> {
 
 			this.attrs.lastFinishedAt = new Date();
 
-			this.agenda.emit('success', this);
-			this.agenda.emit(`success:${this.attrs.name}`, this);
+			this.chronos.emit('success', this);
+			this.chronos.emit(`success:${this.attrs.name}`, this);
 			log('[%s:%s] has succeeded', this.attrs.name, this.attrs._id);
 		} catch (error: any) {
 			log('[%s:%s] unknown error occurred', this.attrs.name, this.attrs._id);
 
 			this.fail(error);
 
-			this.agenda.emit('fail', error, this);
-			this.agenda.emit(`fail:${this.attrs.name}`, error, this);
+			this.chronos.emit('fail', error, this);
+			this.chronos.emit(`fail:${this.attrs.name}`, error, this);
 			log('[%s:%s] has failed [%s]', this.attrs.name, this.attrs._id, error.message);
 		} finally {
 			this.forkedChild = undefined;
 			this.attrs.lockedAt = undefined;
 			try {
-				await this.agenda.db.saveJobState(this);
+				await this.chronos.db.saveJobState(this);
 				log('[%s:%s] was saved successfully to MongoDB', this.attrs.name, this.attrs._id);
 			} catch (err) {
 				// in case this fails, we ignore it
@@ -444,8 +444,8 @@ export class Job<DATA = unknown | void> {
 				log('[%s:%s] was not saved to MongoDB', this.attrs.name, this.attrs._id, err);
 			}
 
-			this.agenda.emit('complete', this);
-			this.agenda.emit(`complete:${this.attrs.name}`, this);
+			this.chronos.emit('complete', this);
+			this.chronos.emit(`complete:${this.attrs.name}`, this);
 			log(
 				'[%s:%s] job finished at [%s] and was unlocked',
 				this.attrs.name,
@@ -456,7 +456,7 @@ export class Job<DATA = unknown | void> {
 	}
 
 	async runJob() {
-		const definition = this.agenda.definitions[this.attrs.name];
+		const definition = this.chronos.definitions[this.attrs.name];
 
 		if (!definition) {
 			log('[%s:%s] has no definition, can not run', this.attrs.name, this.attrs._id);

@@ -1,14 +1,14 @@
 // eslint-disable-next-line prettier/prettier
-import type {Job, JobWithId} from './Job';
+import type { Job, JobWithId } from './Job';
 import type { IJobParameters } from './types/JobParameters';
-import type { Agenda } from './index';
+import type { Chronos } from './index';
 /**
  * @class
  */
 export class JobProcessingQueue {
 	private _queue: Job[];
 
-	constructor(private agenda: Agenda) {
+	constructor(private chronos: Chronos) {
 		this._queue = [];
 	}
 
@@ -96,15 +96,15 @@ export class JobProcessingQueue {
 	returnNextConcurrencyFreeJob(
 		jobStatus: {
 			[jobName: string]:
-				| {
-						running: number;
-				  }
-				| undefined;
+			| {
+				running: number;
+			}
+			| undefined;
 		},
 		handledJobs: IJobParameters['_id'][]
 	): (JobWithId & { attrs: IJobParameters & { nextRunAt?: Date | null } }) | undefined {
 		const next = (Object.keys(this._queue) as unknown as number[]).reverse().find(i => {
-			const def = this.agenda.definitions[this._queue[i].attrs.name];
+			const def = this.chronos.definitions[this._queue[i].attrs.name];
 			const status = jobStatus[this._queue[i].attrs.name];
 
 			// check if we have a definition

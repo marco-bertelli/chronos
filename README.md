@@ -1,56 +1,41 @@
-# Agenda
+# Chronos
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/agenda/agenda@master/agenda.svg" alt="Agenda" width="100" height="100">
+  <img src="https://rag-bot-prod.s3.eu-west-1.amazonaws.com/Gemini_Generated_Image_tdd4kutdd4kutdd4.png" alt="Chronos" width="300" height="300">
 </p>
 
 <p align="center">
   A light-weight job scheduling library for Node.js
 </p>
 
-This was originally a fork of agenda.js,
+[![NPM Version](https://img.shields.io/npm/v/chronos-job-scheduler.svg)](https://www.npmjs.com/package/chronos-job-scheduler)
+[![NPM Downloads](https://img.shields.io/npm/dm/chronos-job-scheduler.svg)](https://www.npmjs.com/package/chronos-job-scheduler)
+[![License](https://img.shields.io/npm/l/chronos-job-scheduler.svg)](https://github.com/marco-bertelli/chronos/blob/main/LICENSE)
+
+originally forked by Agenda TS, the plan is to improve and continue maintaining it and not let the project die.
+Used and maintained by me Marco Bertelli, and used also by my company Runelab in production for 100+ project's
+
 it differs from the original version in following points:
+- New Mongo Drivers to support the last version of mongo
+- plan to update the unit test's
+- plan to improve lib performance and have new idea's
 
-- Complete rewrite in Typescript (fully typed!)
-- mongodb4 driver (supports mongodb 5.x)
-- Supports mongoDB sharding by name
-- touch() can have an optional progress parameter (0-100)
-- Bugfixes and improvements for locking & job processing (concurrency, lockLimit,..)
-- Breaking change: define() config paramter moved from 2nd position to 3rd
-- getRunningStats()
-- automatically waits for agenda to be connected before calling any database operations
-- uses a database abstraction layer behind the scene
-- does not create a database index by default, you can set `ensureIndex: true` when initializing Agenda
-  or run manually:
 
-```
-db.agendaJobs.ensureIndex({
-    "name" : 1,
-    "nextRunAt" : 1,
-    "priority" : -1,
-    "lockedAt" : 1,
-    "disabled" : 1
-}, "findAndLockNextJobIndex")
-```
+# Chronos offers
 
-# Agenda offers
-
-- Minimal overhead. Agenda aims to keep its code base small.
+- Minimal overhead. Chronos aims to keep its code base small.
 - Mongo backed persistence layer.
 - Promises based API.
 - Scheduling with configurable priority, concurrency, repeating and persistence of job results.
 - Scheduling via cron or human readable syntax.
 - Event backed job queue that you can hook into.
-- [Agenda-rest](https://github.com/agenda/agenda-rest): optional standalone REST API.
-- [Inversify-agenda](https://github.com/lautarobock/inversify-agenda) - Some utilities for the development of agenda workers with Inversify.
-- [Agendash](https://github.com/agenda/agendash): optional standalone web-interface.
 
 ### Feature Comparison
 
 Since there are a few job queue solutions, here a table comparing them to help you use the one that
 better suits your needs.
 
-| Feature                    |      Bull       |   Bee    | Agenda |
+| Feature                    |      Bull       |   Bee    | Chronos (same as Agenda but maintained) |
 | :------------------------- | :-------------: | :------: | :----: |
 | Backend                    |      redis      |  redis   | mongo  |
 | Priorities                 |        ✓        |          |   ✓    |
@@ -75,43 +60,43 @@ _Kudos for making the comparison chart goes to [Bull](https://www.npmjs.com/pack
 
 Install via NPM
 
-    npm install @hokify/agenda
+    npm install chronos-job-scheduler
 
 You will also need a working [Mongo](https://www.mongodb.com/) database (v4+) to point it to.
 
 # Example Usage
 
 ```js
-const mongoConnectionString = 'mongodb://127.0.0.1/agenda';
+const mongoConnectionString = 'mongodb://127.0.0.1/scheduler';
 
-const agenda = new Agenda({ db: { address: mongoConnectionString } });
+const scheduler = new Chronos({ db: { address: mongoConnectionString } });
 
 // Or override the default collection name:
-// const agenda = new Agenda({db: {address: mongoConnectionString, collection: 'jobCollectionName'}});
+// const scheduler = new Chronos({db: {address: mongoConnectionString, collection: 'jobCollectionName'}});
 
 // or pass additional connection options:
-// const agenda = new Agenda({db: {address: mongoConnectionString, collection: 'jobCollectionName', options: {ssl: true}}});
+// const scheduler = new Chronos({db: {address: mongoConnectionString, collection: 'jobCollectionName', options: {ssl: true}}});
 
 // or pass in an existing mongodb-native MongoClient instance
-// const agenda = new Agenda({mongo: myMongoClient});
+// const scheduler = new Chronos({mongo: myMongoClient});
 
-agenda.define('delete old users', async job => {
+scheduler.define('delete old users', async job => {
 	await User.remove({ lastLogIn: { $lt: twoDaysAgo } });
 });
 
 (async function () {
 	// IIFE to give access to async/await
-	await agenda.start();
+	await scheduler.start();
 
-	await agenda.every('3 minutes', 'delete old users');
+	await scheduler.every('3 minutes', 'delete old users');
 
 	// Alternatively, you could also do:
-	await agenda.every('*/3 * * * *', 'delete old users');
+	await scheduler.every('*/3 * * * *', 'delete old users');
 })();
 ```
 
 ```js
-agenda.define(
+scheduler.define(
 	'send email report',
 	async job => {
 		const { to } = job.attrs.data;
@@ -126,30 +111,30 @@ agenda.define(
 );
 
 (async function () {
-	await agenda.start();
-	await agenda.schedule('in 20 minutes', 'send email report', { to: 'admin@example.com' });
+	await scheduler.start();
+	await scheduler.schedule('in 20 minutes', 'send email report', { to: 'admin@example.com' });
 })();
 ```
 
 ```js
 (async function () {
-	const weeklyReport = agenda.create('send email report', { to: 'example@example.com' });
-	await agenda.start();
+	const weeklyReport = scheduler.create('send email report', { to: 'example@example.com' });
+	await scheduler.start();
 	await weeklyReport.repeatEvery('1 week').save();
 })();
 ```
 
 # Full documentation
 
-See also https://hokify.github.io/agenda/
+See also https://hokify.github.io/scheduler/
 
-Agenda's basic control structure is an instance of an agenda. Agenda's are
+Chronos's basic control structure is an instance of an scheduler. Chronos's are
 mapped to a database collection and load the jobs from within.
 
 ## Table of Contents
 
-- [Configuring an agenda](#configuring-an-agenda)
-- [Agenda Events](#agenda-events)
+- [Configuring an scheduler](#configuring-an-scheduler)
+- [Chronos Events](#scheduler-events)
 - [Defining job processors](#defining-job-processors)
 - [Creating jobs](#creating-jobs)
 - [Managing jobs](#managing-jobs)
@@ -163,19 +148,19 @@ mapped to a database collection and load the jobs from within.
 - [Debugging Issues](#debugging-issues)
 - [Acknowledgements](#acknowledgements)
 
-## Configuring an agenda
+## Configuring an scheduler
 
 All configuration methods are chainable, meaning you can do something like:
 
 ```js
-const agenda = new Agenda();
-agenda
+const scheduler = new Chronos();
+scheduler
   .database(...)
   .processEvery('3 minutes')
   ...;
 ```
 
-Possible agenda config options:
+Possible scheduler config options:
 
 ```ts
 {
@@ -197,54 +182,54 @@ Possible agenda config options:
 }
 ```
 
-Agenda uses [Human Interval](http://github.com/rschmukler/human-interval) for specifying the intervals. It supports the following units:
+Chronos uses [Human Interval](http://github.com/rschmukler/human-interval) for specifying the intervals. It supports the following units:
 
 `seconds`, `minutes`, `hours`, `days`,`weeks`, `months` -- assumes 30 days, `years` -- assumes 365 days
 
 More sophisticated examples
 
 ```js
-agenda.processEvery('one minute');
-agenda.processEvery('1.5 minutes');
-agenda.processEvery('3 days and 4 hours');
-agenda.processEvery('3 days, 4 hours and 36 seconds');
+scheduler.processEvery('one minute');
+scheduler.processEvery('1.5 minutes');
+scheduler.processEvery('3 days and 4 hours');
+scheduler.processEvery('3 days, 4 hours and 36 seconds');
 ```
 
 ### database(url, [collectionName], [MongoClientOptions])
 
 Specifies the database at the `url` specified. If no collection name is given,
-`agendaJobs` is used.
+`chronosJobs` is used.
 
 By default `useNewUrlParser` and `useUnifiedTopology` is set to `true`,
 
 ```js
-agenda.database('localhost:27017/agenda-test', 'agendaJobs');
+scheduler.database('localhost:27017/scheduler-test', 'chronosJobs');
 ```
 
 You can also specify it during instantiation.
 
 ```js
-const agenda = new Agenda({
-	db: { address: 'localhost:27017/agenda-test', collection: 'agendaJobs' }
+const scheduler = new Chronos({
+	db: { address: 'localhost:27017/scheduler-test', collection: 'chronosJobs' }
 });
 ```
 
-Agenda will emit a `ready` event (see [Agenda Events](#agenda-events)) when properly connected to the database.
-It is safe to call `agenda.start()` without waiting for this event, as this is handled internally.
+Chronos will emit a `ready` event (see [Chronos Events](#scheduler-events)) when properly connected to the database.
+It is safe to call `scheduler.start()` without waiting for this event, as this is handled internally.
 If you're using the `db` options, or call `database`, then you may still need to listen for `ready` before saving jobs.
 
 ### mongo(dbInstance, [collectionName])
 
 Use an existing mongodb-native MongoClient/Db instance. This can help consolidate connections to a
-database. You can instead use `.database` to have agenda handle connecting for you.
+database. You can instead use `.database` to have scheduler handle connecting for you.
 
 You can also specify it during instantiation:
 
 ```js
-const agenda = new Agenda({ mongo: mongoClientInstance.db('agenda-test') });
+const scheduler = new Chronos({ mongo: mongoClientInstance.db('scheduler-test') });
 ```
 
-Note that MongoClient.connect() returns a mongoClientInstance since [node-mongodb-native 3.0.0](https://github.com/mongodb/node-mongodb-native/blob/master/CHANGES_3.0.0.md), while it used to return a dbInstance that could then be directly passed to agenda.
+Note that MongoClient.connect() returns a mongoClientInstance since [node-mongodb-native 3.0.0](https://github.com/mongodb/node-mongodb-native/blob/master/CHANGES_3.0.0.md), while it used to return a dbInstance that could then be directly passed to scheduler.
 
 ### name(name)
 
@@ -253,13 +238,13 @@ Useful if you have multiple job processors (agendas) and want to see which
 job queue last ran the job.
 
 ```js
-agenda.name(os.hostname + '-' + process.pid);
+scheduler.name(os.hostname + '-' + process.pid);
 ```
 
 You can also specify it during instantiation
 
 ```js
-const agenda = new Agenda({ name: 'test queue' });
+const scheduler = new Chronos({ name: 'test queue' });
 ```
 
 ### processEvery(interval)
@@ -267,8 +252,8 @@ const agenda = new Agenda({ name: 'test queue' });
 Takes a string `interval` which can be either a traditional javascript number,
 or a string such as `3 minutes`
 
-Specifies the frequency at which agenda will query the database looking for jobs
-that need to be processed. Agenda internally uses `setTimeout` to guarantee that
+Specifies the frequency at which scheduler will query the database looking for jobs
+that need to be processed. Chronos internally uses `setTimeout` to guarantee that
 jobs run at (close to ~3ms) the right time.
 
 Decreasing the frequency will result in fewer database queries, but more jobs
@@ -279,13 +264,13 @@ that haven't run will still be locked, meaning that you may have to wait for the
 lock to expire. By default it is `'5 seconds'`.
 
 ```js
-agenda.processEvery('1 minute');
+scheduler.processEvery('1 minute');
 ```
 
 You can also specify it during instantiation
 
 ```js
-const agenda = new Agenda({ processEvery: '30 seconds' });
+const scheduler = new Chronos({ processEvery: '30 seconds' });
 ```
 
 ### maxConcurrency(number)
@@ -294,13 +279,13 @@ Takes a `number` which specifies the max number of jobs that can be running at
 any given moment. By default it is `20`.
 
 ```js
-agenda.maxConcurrency(20);
+scheduler.maxConcurrency(20);
 ```
 
 You can also specify it during instantiation
 
 ```js
-const agenda = new Agenda({ maxConcurrency: 20 });
+const scheduler = new Chronos({ maxConcurrency: 20 });
 ```
 
 ### defaultConcurrency(number)
@@ -309,13 +294,13 @@ Takes a `number` which specifies the default number of a specific job that can b
 any given moment. By default it is `5`.
 
 ```js
-agenda.defaultConcurrency(5);
+scheduler.defaultConcurrency(5);
 ```
 
 You can also specify it during instantiation
 
 ```js
-const agenda = new Agenda({ defaultConcurrency: 5 });
+const scheduler = new Chronos({ defaultConcurrency: 5 });
 ```
 
 ### lockLimit(number)
@@ -323,13 +308,13 @@ const agenda = new Agenda({ defaultConcurrency: 5 });
 Takes a `number` which specifies the max number jobs that can be locked at any given moment. By default it is `0` for no max.
 
 ```js
-agenda.lockLimit(0);
+scheduler.lockLimit(0);
 ```
 
 You can also specify it during instantiation
 
 ```js
-const agenda = new Agenda({ lockLimit: 0 });
+const scheduler = new Chronos({ lockLimit: 0 });
 ```
 
 ### defaultLockLimit(number)
@@ -337,13 +322,13 @@ const agenda = new Agenda({ lockLimit: 0 });
 Takes a `number` which specifies the default number of a specific job that can be locked at any given moment. By default it is `0` for no max.
 
 ```js
-agenda.defaultLockLimit(0);
+scheduler.defaultLockLimit(0);
 ```
 
 You can also specify it during instantiation
 
 ```js
-const agenda = new Agenda({ defaultLockLimit: 0 });
+const scheduler = new Chronos({ defaultLockLimit: 0 });
 ```
 
 ### defaultLockLifetime(number)
@@ -357,13 +342,13 @@ or `done` is specified in the params and `done()` is called) before the
 `lockLifetime`. The lock is useful if the job crashes or times out.
 
 ```js
-agenda.defaultLockLifetime(10000);
+scheduler.defaultLockLifetime(10000);
 ```
 
 You can also specify it during instantiation
 
 ```js
-const agenda = new Agenda({ defaultLockLifetime: 10000 });
+const scheduler = new Chronos({ defaultLockLifetime: 10000 });
 ```
 
 ### sort(query)
@@ -375,21 +360,21 @@ By default it is `{ nextRunAt: 1, priority: -1 }`, which obeys a first in first 
 ### disableAutoIndex(boolean)
 
 Optional. Disables the automatic creation of the default index on the jobs table.
-By default, Agenda creates an index to optimize its queries against Mongo while processing jobs.
+By default, Chronos creates an index to optimize its queries against Mongo while processing jobs.
 
 This is useful if you want to use your own index in specific use-cases.
 
-## Agenda Events
+## Chronos Events
 
-An instance of an agenda will emit the following events:
+An instance of an scheduler will emit the following events:
 
-- `ready` - called when Agenda mongo connection is successfully opened and indices created.
-  If you're passing agenda an existing connection, you shouldn't need to listen for this, as `agenda.start()` will not resolve until indices have been created.
-  If you're using the `db` options, or call `database`, then you may still need to listen for the `ready` event before saving jobs. `agenda.start()` will still wait for the connection to be opened.
-- `error` - called when Agenda mongo connection process has thrown an error
+- `ready` - called when Chronos mongo connection is successfully opened and indices created.
+  If you're passing scheduler an existing connection, you shouldn't need to listen for this, as `scheduler.start()` will not resolve until indices have been created.
+  If you're using the `db` options, or call `database`, then you may still need to listen for the `ready` event before saving jobs. `scheduler.start()` will still wait for the connection to be opened.
+- `error` - called when Chronos mongo connection process has thrown an error
 
 ```js
-await agenda.start();
+await scheduler.start();
 ```
 
 ## Defining Job Processors
@@ -408,8 +393,8 @@ synchronous or returns a Promise, you may omit `done` from the signature.
 `options` is an optional argument which can overwrite the defaults. It can take
 the following:
 
-- `concurrency`: `number` maximum number of that job that can be running at once (per instance of agenda)
-- `lockLimit`: `number` maximum number of that job that can be locked at once (per instance of agenda)
+- `concurrency`: `number` maximum number of that job that can be running at once (per instance of scheduler)
+- `lockLimit`: `number` maximum number of that job that can be locked at once (per instance of scheduler)
 - `lockLifetime`: `number` interval in ms of how long the job stays locked for (see [multiple job processors](#multiple-job-processors) for more info).
   A job will automatically unlock once a returned promise resolves/rejects (or if `done` is specified in the signature and `done()` is called).
 - `priority`: `(lowest|low|normal|high|highest|number)` specifies the priority
@@ -432,7 +417,7 @@ Priority mapping:
 Async Job:
 
 ```js
-agenda.define('some long running job', async job => {
+scheduler.define('some long running job', async job => {
 	const data = await doSomelengthyTask();
 	await formatThatData(data);
 	await sendThatData(data);
@@ -442,7 +427,7 @@ agenda.define('some long running job', async job => {
 Async Job (using `done`):
 
 ```js
-agenda.define('some long running job', (job, done) => {
+scheduler.define('some long running job', (job, done) => {
 	doSomelengthyTask(data => {
 		formatThatData(data);
 		sendThatData(data);
@@ -454,7 +439,7 @@ agenda.define('some long running job', (job, done) => {
 Sync Job:
 
 ```js
-agenda.define('say hello', job => {
+scheduler.define('say hello', job => {
 	console.log('Hello!');
 });
 ```
@@ -482,20 +467,20 @@ In order to use this argument, `data` must also be specified.
 Returns the `job`.
 
 ```js
-agenda.define('printAnalyticsReport', async job => {
+scheduler.define('printAnalyticsReport', async job => {
 	const users = await User.doSomethingReallyIntensive();
 	processUserData(users);
 	console.log('I print a report!');
 });
 
-agenda.every('15 minutes', 'printAnalyticsReport');
+scheduler.every('15 minutes', 'printAnalyticsReport');
 ```
 
 Optionally, `name` could be array of job names, which is convenient for scheduling
 different jobs for same `interval`.
 
 ```js
-agenda.every('15 minutes', ['printAnalyticsReport', 'sendNotifications', 'updateUserRecords']);
+scheduler.every('15 minutes', ['printAnalyticsReport', 'sendNotifications', 'updateUserRecords']);
 ```
 
 In this case, `every` returns array of `jobs`.
@@ -511,13 +496,13 @@ under `job.attrs.data`.
 Returns the `job`.
 
 ```js
-agenda.schedule('tomorrow at noon', 'printAnalyticsReport', { userCount: 100 });
+scheduler.schedule('tomorrow at noon', 'printAnalyticsReport', { userCount: 100 });
 ```
 
 Optionally, `name` could be array of job names, similar to the `every` method.
 
 ```js
-agenda.schedule('tomorrow at noon', [
+scheduler.schedule('tomorrow at noon', [
 	'printAnalyticsReport',
 	'sendNotifications',
 	'updateUserRecords'
@@ -536,7 +521,7 @@ under `job.attrs.data`.
 Returns the `job`.
 
 ```js
-agenda.now('do the hokey pokey');
+scheduler.now('do the hokey pokey');
 ```
 
 ### create(jobName, data)
@@ -545,7 +530,7 @@ Returns an instance of a `jobName` with `data`. This does _NOT_ save the job in
 the database. See below to learn how to manually work with jobs.
 
 ```js
-const job = agenda.create('printAnalyticsReport', { userCount: 100 });
+const job = scheduler.create('printAnalyticsReport', { userCount: 100 });
 await job.save();
 console.log('Job successfully saved');
 ```
@@ -554,10 +539,10 @@ console.log('Job successfully saved');
 
 ### jobs(mongodb-native query, mongodb-native sort, mongodb-native limit, mongodb-native skip)
 
-Lets you query (then sort, limit and skip the result) all of the jobs in the agenda job's database. These are full [mongodb-native](https://github.com/mongodb/node-mongodb-native) `find`, `sort`, `limit` and `skip` commands. See mongodb-native's documentation for details.
+Lets you query (then sort, limit and skip the result) all of the jobs in the scheduler job's database. These are full [mongodb-native](https://github.com/mongodb/node-mongodb-native) `find`, `sort`, `limit` and `skip` commands. See mongodb-native's documentation for details.
 
 ```js
-const jobs = await agenda.jobs({ name: 'printAnalyticsReport' }, { data: -1 }, 3, 1);
+const jobs = await scheduler.jobs({ name: 'printAnalyticsReport' }, { data: -1 }, 3, 1);
 // Work with jobs (see below)
 ```
 
@@ -566,30 +551,30 @@ const jobs = await agenda.jobs({ name: 'printAnalyticsReport' }, { data: -1 }, 3
 Cancels any jobs matching the passed mongodb-native query, and removes them from the database. Returns a Promise resolving to the number of cancelled jobs, or rejecting on error.
 
 ```js
-const numRemoved = await agenda.cancel({ name: 'printAnalyticsReport' });
+const numRemoved = await scheduler.cancel({ name: 'printAnalyticsReport' });
 ```
 
-This functionality can also be achieved by first retrieving all the jobs from the database using `agenda.jobs()`, looping through the resulting array and calling `job.remove()` on each. It is however preferable to use `agenda.cancel()` for this use case, as this ensures the operation is atomic.
+This functionality can also be achieved by first retrieving all the jobs from the database using `scheduler.jobs()`, looping through the resulting array and calling `job.remove()` on each. It is however preferable to use `scheduler.cancel()` for this use case, as this ensures the operation is atomic.
 
 ### disable(mongodb-native query)
 
 Disables any jobs matching the passed mongodb-native query, preventing any matching jobs from being run by the Job Processor.
 
 ```js
-const numDisabled = await agenda.disable({ name: 'pollExternalService' });
+const numDisabled = await scheduler.disable({ name: 'pollExternalService' });
 ```
 
-Similar to `agenda.cancel()`, this functionality can be acheived with a combination of `agenda.jobs()` and `job.disable()`
+Similar to `scheduler.cancel()`, this functionality can be acheived with a combination of `scheduler.jobs()` and `job.disable()`
 
 ### enable(mongodb-native query)
 
 Enables any jobs matching the passed mongodb-native query, allowing any matching jobs to be run by the Job Processor.
 
 ```js
-const numEnabled = await agenda.enable({ name: 'pollExternalService' });
+const numEnabled = await scheduler.enable({ name: 'pollExternalService' });
 ```
 
-Similar to `agenda.cancel()`, this functionality can be acheived with a combination of `agenda.jobs()` and `job.enable()`
+Similar to `scheduler.cancel()`, this functionality can be acheived with a combination of `scheduler.jobs()` and `job.enable()`
 
 ### purge()
 
@@ -598,12 +583,12 @@ Removes all jobs in the database without defined behaviors. Useful if you change
 _IMPORTANT:_ Do not run this before you finish defining all of your jobs. If you do, you will nuke your database of jobs.
 
 ```js
-const numRemoved = await agenda.purge();
+const numRemoved = await scheduler.purge();
 ```
 
 ## Starting the job processor
 
-To get agenda to start processing jobs from the database you must start it. This
+To get scheduler to start processing jobs from the database you must start it. This
 will schedule an interval (based on `processEvery`) to check for new jobs and
 run them. You can also stop the queue.
 
@@ -622,7 +607,7 @@ shutdown.
 
 ```js
 async function graceful() {
-	await agenda.stop();
+	await scheduler.stop();
 	process.exit(0);
 }
 
@@ -633,14 +618,14 @@ process.on('SIGINT', graceful);
 ## Multiple job processors
 
 Sometimes you may want to have multiple node instances / machines process from
-the same queue. Agenda supports a locking mechanism to ensure that multiple
+the same queue. Chronos supports a locking mechanism to ensure that multiple
 queues don't process the same job.
 
 You can configure the locking mechanism by specifying `lockLifetime` as an
 interval when defining the job.
 
 ```js
-agenda.define(
+scheduler.define(
 	'someJob',
 	(job, cb) => {
 		// Do something in 10 seconds or less...
@@ -738,7 +723,7 @@ job.setShouldSaveResult(true);
 await job.save();
 ```
 
-The data returned by the job will be available on the `result` attribute after it succeeded and got retrieved again from the database, e.g. via `agenda.jobs(...)` or through the [success job event](#agenda-events)).
+The data returned by the job will be available on the `result` attribute after it succeeded and got retrieved again from the database, e.g. via `scheduler.jobs(...)` or through the [success job event](#scheduler-events)).
 
 ### unique(properties, [options])
 
@@ -822,7 +807,7 @@ when you have very long running jobs. The call returns a promise that resolves
 when the job's lock has been renewed.
 
 ```js
-agenda.define('super long job', async job => {
+scheduler.define('super long job', async job => {
 	await doSomeLongTask();
 	await job.touch();
 	await doAnotherLongTask();
@@ -833,13 +818,13 @@ agenda.define('super long job', async job => {
 
 ## Job Queue Events
 
-An instance of an agenda will emit the following events:
+An instance of an scheduler will emit the following events:
 
 - `start` - called just before a job starts
 - `start:job name` - called just before the specified job starts
 
 ```js
-agenda.on('start', job => {
+scheduler.on('start', job => {
 	console.log('Job %s starting', job.attrs.name);
 });
 ```
@@ -848,7 +833,7 @@ agenda.on('start', job => {
 - `complete:job name` - called when a job finishes, regardless of if it succeeds or fails
 
 ```js
-agenda.on('complete', job => {
+scheduler.on('complete', job => {
 	console.log(`Job ${job.attrs.name} finished`);
 });
 ```
@@ -857,7 +842,7 @@ agenda.on('complete', job => {
 - `success:job name` - called when a job finishes successfully
 
 ```js
-agenda.on('success:send email', job => {
+scheduler.on('success:send email', job => {
 	console.log(`Sent Email Successfully to ${job.attrs.data.to}`);
 });
 ```
@@ -866,7 +851,7 @@ agenda.on('success:send email', job => {
 - `fail:job name` - called when a job throws an error
 
 ```js
-agenda.on('fail:send email', (err, job) => {
+scheduler.on('fail:send email', (err, job) => {
 	console.log(`Job failed with error: ${err.message}`);
 });
 ```
@@ -879,19 +864,19 @@ Jobs are run with priority in a first in first out order (so they will be run in
 
 For example, if we have two jobs named "send-email" queued (both with the same priority), and the first job is queued at 3:00 PM and second job is queued at 3:05 PM with the same `priority` value, then the first job will run first if we start to send "send-email" jobs at 3:10 PM. However if the first job has a priority of `5` and the second job has a priority of `10`, then the second will run first (priority takes precedence) at 3:10 PM.
 
-The default [MongoDB sort object](https://docs.mongodb.com/manual/reference/method/cursor.sort/) is `{ nextRunAt: 1, priority: -1 }` and can be changed through the option `sort` when configuring Agenda.
+The default [MongoDB sort object](https://docs.mongodb.com/manual/reference/method/cursor.sort/) is `{ nextRunAt: 1, priority: -1 }` and can be changed through the option `sort` when configuring Chronos.
 
 ### What is the difference between `lockLimit` and `maxConcurrency`?
 
-Agenda will lock jobs 1 by one, setting the `lockedAt` property in mongoDB, and creating an instance of the `Job` class which it caches into the `_lockedJobs` array. This defaults to having no limit, but can be managed using lockLimit. If all jobs will need to be run before agenda's next interval (set via `agenda.processEvery`), then agenda will attempt to lock all jobs.
+Chronos will lock jobs 1 by one, setting the `lockedAt` property in mongoDB, and creating an instance of the `Job` class which it caches into the `_lockedJobs` array. This defaults to having no limit, but can be managed using lockLimit. If all jobs will need to be run before scheduler's next interval (set via `scheduler.processEvery`), then scheduler will attempt to lock all jobs.
 
-Agenda will also pull jobs from `_lockedJobs` and into `_runningJobs`. These jobs are actively being worked on by user code, and this is limited by `maxConcurrency` (defaults to 20).
+Chronos will also pull jobs from `_lockedJobs` and into `_runningJobs`. These jobs are actively being worked on by user code, and this is limited by `maxConcurrency` (defaults to 20).
 
-If you have multiple instances of agenda processing the same job definition with a fast repeat time you may find they get unevenly loaded. This is because they will compete to lock as many jobs as possible, even if they don't have enough concurrency to process them. This can be resolved by tweaking the `maxConcurrency` and `lockLimit` properties.
+If you have multiple instances of scheduler processing the same job definition with a fast repeat time you may find they get unevenly loaded. This is because they will compete to lock as many jobs as possible, even if they don't have enough concurrency to process them. This can be resolved by tweaking the `maxConcurrency` and `lockLimit` properties.
 
 ### Sample Project Structure?
 
-Agenda doesn't have a preferred project structure and leaves it to the user to
+Chronos doesn't have a preferred project structure and leaves it to the user to
 choose how they would like to use it. That being said, you can check out the
 [example project structure](#example-project-structure) below.
 
@@ -901,9 +886,9 @@ Thanks! I'm flattered, but it's really not necessary. If you really want to, you
 
 ### Web Interface?
 
-Agenda itself does not have a web interface built in but we do offer stand-alone web interface [Agendash](https://github.com/agenda/agendash):
+Chronos itself does not have a web interface built in but we do offer stand-alone web interface [Agendash](https://github.com/scheduler/agendash):
 
-<a href="https://raw.githubusercontent.com/agenda/agendash/master/job-details.png"><img src="https://raw.githubusercontent.com/agenda/agendash/master/job-details.png" style="max-width:100%" alt="Agendash interface"></a>
+<a href="https://raw.githubusercontent.com/scheduler/agendash/master/job-details.png"><img src="https://raw.githubusercontent.com/scheduler/agendash/master/job-details.png" style="max-width:100%" alt="Agendash interface"></a>
 
 ### Mongo vs Redis
 
@@ -912,17 +897,17 @@ non-essential data (such as sessions) and without configuration doesn't
 guarantee the same level of persistence as Mongo (should the server need to be
 restarted/crash).
 
-Agenda decides to focus on persistence without requiring special configuration
+Chronos decides to focus on persistence without requiring special configuration
 of Redis (thereby degrading the performance of the Redis server on non-critical
 data, such as sessions).
 
 Ultimately if enough people want a Redis driver instead of Mongo, I will write
-one. (Please open an issue requesting it). For now, Agenda decided to focus on
+one. (Please open an issue requesting it). For now, Chronos decided to focus on
 guaranteed persistence.
 
 ### Spawning / forking processes
 
-Ultimately Agenda can work from a single job queue across multiple machines, node processes, or forks. If you are interested in having more than one worker, [Bars3s](http://github.com/bars3s) has written up a fantastic example of how one might do it:
+Ultimately Chronos can work from a single job queue across multiple machines, node processes, or forks. If you are interested in having more than one worker, [Bars3s](http://github.com/bars3s) has written up a fantastic example of how one might do it:
 
 ```js
 const cluster = require('cluster');
@@ -968,7 +953,7 @@ if (cluster.isMaster) {
 
 	if (process.env.job) {
 		console.log(`start job server: ${cluster.worker.id}`);
-		// Initialize the Agenda here
+		// Initialize the Chronos here
 		jobWorker.start();
 	}
 }
@@ -992,19 +977,19 @@ function removeJobWorker(id) {
 
 ### Recovering lost Mongo connections ("auto_reconnect")
 
-Agenda is configured by default to automatically reconnect indefinitely, emitting an [error event](#agenda-events)
+Chronos is configured by default to automatically reconnect indefinitely, emitting an [error event](#scheduler-events)
 when no connection is available on each [process tick](#processeveryinterval), allowing you to restore the Mongo
 instance without having to restart the application.
 
 However, if you are using an [existing Mongo client](#mongomongoclientinstance)
 you'll need to configure the `reconnectTries` and `reconnectInterval` [connection settings](http://mongodb.github.io/node-mongodb-native/3.0/reference/connecting/connection-settings/)
-manually, otherwise you'll find that Agenda will throw an error with the message "MongoDB connection is not recoverable,
+manually, otherwise you'll find that Chronos will throw an error with the message "MongoDB connection is not recoverable,
 application restart required" if the connection cannot be recovered within 30 seconds.
 
 # Example Project Structure
 
-Agenda will only process jobs that it has definitions for. This allows you to
-selectively choose which jobs a given agenda will process.
+Chronos will only process jobs that it has definitions for. This allows you to
+selectively choose which jobs a given scheduler will process.
 
 Consider the following project structure, which allows us to share models with
 the rest of our code base, and specify which jobs a worker processes, if any at
@@ -1014,7 +999,7 @@ all.
 - server.js
 - worker.js
 lib/
-  - agenda.js
+  - scheduler.js
   controllers/
     - user-controller.js
   jobs/
@@ -1032,13 +1017,13 @@ Sample job processor (eg. `jobs/email.js`)
 let email = require('some-email-lib'),
 	User = require('../models/user-model.js');
 
-module.exports = function (agenda) {
-	agenda.define('registration email', async job => {
+module.exports = function (scheduler) {
+	scheduler.define('registration email', async job => {
 		const user = await User.get(job.attrs.data.userId);
 		await email(user.email(), 'Thanks for registering', 'Thanks for registering ' + user.name());
 	});
 
-	agenda.define('reset password', async job => {
+	scheduler.define('reset password', async job => {
 		// Etc
 	});
 
@@ -1046,26 +1031,26 @@ module.exports = function (agenda) {
 };
 ```
 
-lib/agenda.js
+lib/scheduler.js
 
 ```js
-const Agenda = require('agenda');
+const Chronos = require('chronos-job-scheduler');
 
-const connectionOpts = { db: { address: 'localhost:27017/agenda-test', collection: 'agendaJobs' } };
+const connectionOpts = { db: { address: 'localhost:27017/scheduler-test', collection: 'chronosJobs' } };
 
-const agenda = new Agenda(connectionOpts);
+const scheduler = new Chronos(connectionOpts);
 
 const jobTypes = process.env.JOB_TYPES ? process.env.JOB_TYPES.split(',') : [];
 
 jobTypes.forEach(type => {
-	require('./jobs/' + type)(agenda);
+	require('./jobs/' + type)(scheduler);
 });
 
 if (jobTypes.length) {
-	agenda.start(); // Returns a promise, which should be handled appropriately
+	scheduler.start(); // Returns a promise, which should be handled appropriately
 }
 
-module.exports = agenda;
+module.exports = scheduler;
 ```
 
 lib/controllers/user-controller.js
@@ -1073,7 +1058,7 @@ lib/controllers/user-controller.js
 ```js
 let app = express(),
 	User = require('../models/user-model'),
-	agenda = require('../worker.js');
+	scheduler = require('../worker.js');
 
 app.post('/users', (req, res, next) => {
 	const user = new User(req.body);
@@ -1081,7 +1066,7 @@ app.post('/users', (req, res, next) => {
 		if (err) {
 			return next(err);
 		}
-		agenda.now('registration email', { userId: user.primary() });
+		scheduler.now('registration email', { userId: user.primary() });
 		res.send(201, user.toJson());
 	});
 });
@@ -1090,7 +1075,7 @@ app.post('/users', (req, res, next) => {
 worker.js
 
 ```js
-require('./lib/agenda.js');
+require('./lib/scheduler.js');
 ```
 
 Now you can do the following in your project:
@@ -1124,22 +1109,22 @@ Fire up an instance that processes video-processing/image-processing jobs. Good 
 
 If you think you have encountered a bug, please feel free to report it here:
 
-[Submit Issue](https://github.com/hokify/agenda/issues/new)
+[Submit Issue](https://github.com/marco-bertelli/chronos/issues/new)
 
 Please provide us with as much details as possible such as:
 
-- Agenda version
+- Chronos version
 - Environment (OSX, Linux, Windows, etc)
 - Small description of what happened
 - Any relevant stack track
-- Agenda logs (see below)
+- Chronos logs (see below)
 
 #### To turn on logging, please set your DEBUG env variable like so:
 
-- OSX: `DEBUG="agenda:*" ts-node src/index.ts`
-- Linux: `DEBUG="agenda:*" ts-node src/index.ts`
-- Windows CMD: `set DEBUG=agenda:*`
-- Windows PowerShell: `$env:DEBUG = "agenda:*"`
+- OSX: `DEBUG="chronos:*" ts-node src/index.ts`
+- Linux: `DEBUG="chronos:*" ts-node src/index.ts`
+- Windows CMD: `set DEBUG=chronos:*`
+- Windows PowerShell: `$env:DEBUG = "chronos:*"`
 
 While not necessary, attaching a text file with this debug information would
 be extremely useful in debugging certain issues and is encouraged.
@@ -1148,14 +1133,14 @@ be extremely useful in debugging certain issues and is encouraged.
 
 #### "Multiple order-by items are not supported. Please specify a single order-by item."
 
-When running Agenda on Azure cosmosDB, you might run into this issue caused by Agenda's sort query used for finding and locking the next job. To fix this, you can pass [custom sort option](#sortquery): `sort: { nextRunAt: 1 }`
+When running Chronos on Azure cosmosDB, you might run into this issue caused by Chronos's sort query used for finding and locking the next job. To fix this, you can pass [custom sort option](#sortquery): `sort: { nextRunAt: 1 }`
 
 # Performance
 
 It is recommended to set this index if you use agendash:
 
 ```
-db.agendaJobs.ensureIndex({
+db.chronosJobs.ensureIndex({
     "nextRunAt" : -1,
     "lastRunAt" : -1,
     "lastFinishedAt" : -1
@@ -1166,7 +1151,7 @@ If you have one job definition with thousand of instances, you can add this inde
 for faster sortings
 
 ```
-db.agendaJobs.ensureIndex({
+db.chronosJobs.ensureIndex({
     "name" : 1,
     "disabled" : 1,
     "lockedAt" : 1
@@ -1182,7 +1167,7 @@ To use this feature, several steps are required.
 1.) create a childWorker helper.
 The subrocess has a complete seperate context, so there are no database connections or anything else that can be shared.
 Therefore you have to ensure that all required connections and initializations are done here too. Furthermore
-you also have to load the correct job definition so that agenda nows what code it must execute. Therefore 3 parameters
+you also have to load the correct job definition so that scheduler nows what code it must execute. Therefore 3 parameters
 are passed to the childWorker: name, jobId and path to the job definition.
 
 Example file can look like this:
@@ -1205,16 +1190,16 @@ process.on('message', message => {
 
   /** do other required initializations */
 
-  // get process arguments (name, jobId and path to agenda definition file)
+  // get process arguments (name, jobId and path to scheduler definition file)
 	const [, , name, jobId, agendaDefinition] = process.argv;
 
   // set fancy process title
 	process.title = `${process.title} (sub worker: ${name}/${jobId})`;
 
-  // initialize Agenda in "forkedWorker" mode
-	const agenda = new Agenda({ name: `subworker-${name}`, forkedWorker: true });
-	// connect agenda (but do not start it)
-	await agenda.mongo(mongooseConnection.db as any);
+  // initialize Chronos in "forkedWorker" mode
+	const scheduler = new Chronos({ name: `subworker-${name}`, forkedWorker: true });
+	// connect scheduler (but do not start it)
+	await scheduler.mongo(mongooseConnection.db as any);
 
 	if (!name || !jobId) {
 		throw new Error(`invalid parameters: ${JSON.stringify(process.argv)}`);
@@ -1223,8 +1208,8 @@ process.on('message', message => {
   // load job definition
   /** in this case the file is for example ../some/path/definitions.js
   with a content like:
-  export default (agenda: Agenda, definitionOnly = false) => {
-    agenda.define(
+  export default (scheduler: Chronos, definitionOnly = false) => {
+    scheduler.define(
       'some job',
       async (notification: {
         attrs: { data: { dealId: string; orderId: TypeObjectId<IOrder> } };
@@ -1240,11 +1225,11 @@ process.on('message', message => {
   */
 	if (agendaDefinition) {
 		const loadDefinition = await import(agendaDefinition);
-		(loadDefinition.default || loadDefinition)(agenda, true);
+		(loadDefinition.default || loadDefinition)(scheduler, true);
 	}
 
   // run this job now
-	await agenda.runForkedJob(jobId);
+	await scheduler.runForkedJob(jobId);
 
   // disconnect database and exit
 	process.exit(0);
@@ -1261,22 +1246,21 @@ process.on('message', message => {
 
 Ensure to only define job definitions during this step, otherwise you create some
 overhead (e.g. if you create new jobs inside the defintion files). That's why I call
-the defintion file with agenda and a second paramter that is set to true. If this
+the defintion file with scheduler and a second paramter that is set to true. If this
 parameter is true, I do not initialize any jobs (create jobs etc..)
 
 2.) to use this, you have to enable it on a job. Set forkMode to true:
 
 ```ts
-const job = agenda.create('some job', { meep: 1 });
+const job = scheduler.create('some job', { meep: 1 });
 job.forkMode(true);
 await job.save();
 ```
 
 # Acknowledgements
-
+- Chronos was maintained and improved from agenda by [@marco-bertelli](https://github.com/marco-bertelli).
 - Agenda was originally created by [@rschmukler](https://github.com/rschmukler).
-- [Agendash](https://github.com/agenda/agendash) was originally created by [@joeframbach](https://github.com/joeframbach).
-- These days Agenda has a great community of [contributors](https://github.com/hokify/agenda/graphs/contributors) around it. Join us!
+- [Agendash](https://github.com/scheduler/agendash) was originally created by [@joeframbach](https://github.com/joeframbach).
 
 # License
 

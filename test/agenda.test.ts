@@ -5,12 +5,12 @@ import { Db } from 'mongodb';
 import { expect } from 'chai';
 import { mockMongo } from './helpers/mock-mongodb';
 
-import { Agenda } from '../src';
+import { Chronos } from '../src';
 import { hasMongoProtocol } from '../src/utils/hasMongoProtocol';
 import { Job } from '../src/Job';
 
-// agenda instances
-let globalAgenda: Agenda;
+// chronos instances
+let globalAgenda: Chronos;
 // connection string to mongodb
 let mongoCfg: string;
 // mongo db connection db instance
@@ -18,16 +18,16 @@ let mongoDb: Db;
 
 const clearJobs = async (): Promise<void> => {
 	if (mongoDb) {
-		await mongoDb.collection('agendaJobs').deleteMany({});
+		await mongoDb.collection('chronosJobs').deleteMany({});
 	}
 };
 
 // Slow timeouts for Travis
 const jobTimeout = 500;
 const jobType = 'do work';
-const jobProcessor = () => {};
+const jobProcessor = () => { };
 
-describe('Agenda', () => {
+describe('Chronos', () => {
 	beforeEach(async () => {
 		if (!mongoDb) {
 			const mockedMongo = await mockMongo();
@@ -36,7 +36,7 @@ describe('Agenda', () => {
 		}
 
 		return new Promise(resolve => {
-			globalAgenda = new Agenda(
+			globalAgenda = new Chronos(
 				{
 					mongo: mongoDb
 				},
@@ -69,7 +69,7 @@ describe('Agenda', () => {
 
 	describe('configuration methods', () => {
 		it('sets the _db directly when passed as an option', () => {
-			const agendaDb = new Agenda({ mongo: mongoDb });
+			const agendaDb = new Chronos({ mongo: mongoDb });
 			expect(agendaDb.db).to.not.equal(undefined);
 		});
 	});
@@ -81,28 +81,28 @@ describe('Agenda', () => {
 			});
 
 			it('passing a valid multiple server connection string', () => {
-				expect(hasMongoProtocol(`mongodb+srv://localhost/agenda-test`)).to.equal(true);
+				expect(hasMongoProtocol(`mongodb+srv://localhost/chronos-test`)).to.equal(true);
 			});
 
 			it('passing an invalid connection string', () => {
-				expect(hasMongoProtocol(`localhost/agenda-test`)).to.equal(false);
+				expect(hasMongoProtocol(`localhost/chronos-test`)).to.equal(false);
 			});
 		});
 		describe('mongo', () => {
 			it('sets the _db directly', () => {
-				const agenda = new Agenda();
-				agenda.mongo(mongoDb);
-				expect(agenda.db).to.not.equal(undefined);
+				const chronos = new Chronos();
+				chronos.mongo(mongoDb);
+				expect(chronos.db).to.not.equal(undefined);
 			});
 
 			it('returns itself', async () => {
-				const agenda = new Agenda();
-				expect(await agenda.mongo(mongoDb)).to.equal(agenda);
+				const chronos = new Chronos();
+				expect(await chronos.mongo(mongoDb)).to.equal(chronos);
 			});
 		});
 
 		describe('name', () => {
-			it('sets the agenda name', () => {
+			it('sets the chronos name', () => {
 				globalAgenda.name('test queue');
 				expect(globalAgenda.attrs.name).to.equal('test queue');
 			});
@@ -165,7 +165,7 @@ describe('Agenda', () => {
 			});
 			it('is inherited by jobs', () => {
 				globalAgenda.defaultLockLifetime(7777);
-				globalAgenda.define('testDefaultLockLifetime', () => {});
+				globalAgenda.define('testDefaultLockLifetime', () => { });
 				expect(globalAgenda.definitions.testDefaultLockLifetime.lockLifetime).to.equal(7777);
 			});
 		});
@@ -196,8 +196,8 @@ describe('Agenda', () => {
 			it('sets the type', () => {
 				expect(job.attrs.type).to.equal('normal');
 			});
-			it('sets the agenda', () => {
-				expect(job.agenda).to.equal(globalAgenda);
+			it('sets the chronos', () => {
+				expect(job.chronos).to.equal(globalAgenda);
 			});
 			it('sets the data', () => {
 				expect(job.attrs.data).to.have.property('to', 'some guy');
@@ -238,9 +238,9 @@ describe('Agenda', () => {
 							.then(({ attrs }) => attrs.repeatInterval)
 					).to.equal('5 seconds');
 				});
-				it('sets the agenda', async () => {
+				it('sets the chronos', async () => {
 					expect(
-						await globalAgenda.every('5 seconds', 'send email').then(({ agenda }) => agenda)
+						await globalAgenda.every('5 seconds', 'send email').then(({ chronos }) => chronos)
 					).to.equal(globalAgenda);
 				});
 				it('should update a job that was previously scheduled with `every`', async () => {
@@ -336,19 +336,6 @@ describe('Agenda', () => {
 					expect(job1.attrs.nextRunAt!.toISOString()).not.to.equal(
 						job2.attrs.nextRunAt!.toISOString()
 					);
-
-					mongoDb
-						.collection('agendaJobs')
-						.find({
-							name: 'unique job'
-						})
-						.toArray((err, jobs) => {
-							if (err) {
-								throw err;
-							}
-
-							expect(jobs).to.have.length(1);
-						});
 				});
 
 				it('should not modify job when unique matches and insertOnly is set to true', async () => {
@@ -390,18 +377,14 @@ describe('Agenda', () => {
 
 					expect(job1.attrs.nextRunAt!.toISOString()).to.equal(job2.attrs.nextRunAt!.toISOString());
 
-					mongoDb
-						.collection('agendaJobs')
+					const jobs = await mongoDb
+						.collection('chronosJobs')
 						.find({
 							name: 'unique job'
 						})
-						.toArray((err, jobs) => {
-							if (err) {
-								throw err;
-							}
+						.toArray();
 
-							expect(jobs).to.have.length(1);
-						});
+					expect(jobs).to.have.length(1);
 				});
 			});
 
@@ -438,18 +421,14 @@ describe('Agenda', () => {
 						.schedule(time)
 						.save();
 
-					mongoDb
-						.collection('agendaJobs')
+					const jobs = await mongoDb
+						.collection('chronosJobs')
 						.find({
 							name: 'unique job'
 						})
-						.toArray((err, jobs) => {
-							if (err) {
-								throw err;
-							}
+						.toArray();
 
-							expect(jobs).to.have.length(2);
-						});
+					expect(jobs).to.have.length(2);
 				});
 			});
 		});
@@ -604,44 +583,44 @@ describe('Agenda', () => {
 
 	describe('ensureIndex findAndLockNextJobIndex', () => {
 		it('ensureIndex-Option false does not create index findAndLockNextJobIndex', async () => {
-			const agenda = new Agenda({
+			const chronos = new Chronos({
 				mongo: mongoDb,
 				ensureIndex: false
 			});
 
-			agenda.define('someJob', jobProcessor);
-			await agenda.create('someJob', 1).save();
+			chronos.define('someJob', jobProcessor);
+			await chronos.create('someJob', 1).save();
 
-			const listIndex = await mongoDb.command({ listIndexes: 'agendaJobs' });
+			const listIndex = await mongoDb.command({ listIndexes: 'chronosJobs' });
 			expect(listIndex.cursor.firstBatch).to.have.lengthOf(1);
 			expect(listIndex.cursor.firstBatch[0].name).to.be.equal('_id_');
 		});
 
 		it('ensureIndex-Option true does create index findAndLockNextJobIndex', async () => {
-			const agenda = new Agenda({
+			const chronos = new Chronos({
 				mongo: mongoDb,
 				ensureIndex: true
 			});
 
-			agenda.define('someJob', jobProcessor);
-			await agenda.create('someJob', 1).save();
+			chronos.define('someJob', jobProcessor);
+			await chronos.create('someJob', 1).save();
 
-			const listIndex = await mongoDb.command({ listIndexes: 'agendaJobs' });
+			const listIndex = await mongoDb.command({ listIndexes: 'chronosJobs' });
 			expect(listIndex.cursor.firstBatch).to.have.lengthOf(2);
 			expect(listIndex.cursor.firstBatch[0].name).to.be.equal('_id_');
 			expect(listIndex.cursor.firstBatch[1].name).to.be.equal('findAndLockNextJobIndex');
 		});
 
-		it('creating two agenda-instances with ensureIndex-Option true does not throw an error', async () => {
-			const agenda = new Agenda({
+		it('creating two chronos-instances with ensureIndex-Option true does not throw an error', async () => {
+			const chronos = new Chronos({
 				mongo: mongoDb,
 				ensureIndex: true
 			});
 
-			agenda.define('someJob', jobProcessor);
-			await agenda.create('someJob', 1).save();
+			chronos.define('someJob', jobProcessor);
+			await chronos.create('someJob', 1).save();
 
-			const secondAgenda = new Agenda({
+			const secondAgenda = new Chronos({
 				mongo: mongoDb,
 				ensureIndex: true
 			});
@@ -728,8 +707,8 @@ describe('Agenda', () => {
 		}).timeout(10000);
 
 		it('should not cause unhandledRejection', async () => {
-			// This unit tests if for this bug [https://github.com/agenda/agenda/issues/884]
-			// which is not reproducible with default agenda config on shorter processEvery.
+			// This unit tests if for this bug [https://github.com/chronos/chronos/issues/884]
+			// which is not reproducible with default chronos config on shorter processEvery.
 			// Thus we set the test timeout to 10000, and the delay below to 6000.
 
 			const unhandledRejections: any[] = [];
