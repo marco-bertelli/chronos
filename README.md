@@ -8,9 +8,9 @@
   A light-weight job scheduling library for Node.js
 </p>
 
-[![NPM Version](https://img.shields.io/npm/v/chronos-job-scheduler.svg)](https://www.npmjs.com/package/chronos-job-scheduler)
-[![NPM Downloads](https://img.shields.io/npm/dm/chronos-job-scheduler.svg)](https://www.npmjs.com/package/chronos-job-scheduler)
-[![License](https://img.shields.io/npm/l/chronos-job-scheduler.svg)](https://github.com/marco-bertelli/chronos/blob/main/LICENSE)
+[![NPM Version](https://img.shields.io/npm/v/chronos-jobs.svg)](https://www.npmjs.com/package/chronos-jobs)
+[![NPM Downloads](https://img.shields.io/npm/dm/chronos-jobs.svg)](https://www.npmjs.com/package/chronos-jobs)
+[![License](https://img.shields.io/npm/l/chronos-jobs.svg)](https://github.com/marco-bertelli/chronos/blob/main/LICENSE)
 
 originally forked by Agenda TS, the plan is to improve and continue maintaining it and not let the project die.
 Used and maintained by me Marco Bertelli, and used also by my company Runelab in production for 100+ project's
@@ -60,7 +60,7 @@ _Kudos for making the comparison chart goes to [Bull](https://www.npmjs.com/pack
 
 Install via NPM
 
-    npm install chronos-job-scheduler
+    npm install chronos-jobs
 
 You will also need a working [Mongo](https://www.mongodb.com/) database (v4+) to point it to.
 
@@ -1034,7 +1034,7 @@ module.exports = function (scheduler) {
 lib/scheduler.js
 
 ```js
-const Chronos = require('chronos-job-scheduler');
+const Chronos = require('chronos-jobs');
 
 const connectionOpts = { db: { address: 'localhost:27017/scheduler-test', collection: 'chronosJobs' } };
 

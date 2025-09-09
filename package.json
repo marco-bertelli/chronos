@@ -1,5 +1,5 @@
 {
-  "name": "chronos-job-scheduler",
+  "name": "chronos-jobs",
   "version": "1.0.1",
   "description": "Light weight job scheduler for Node.js",
   "main": "dist/index.js",
