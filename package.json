@@ -1,7 +1,7 @@
 {
   "name": "chronos-jobs",
-  "version": "1.0.1",
-  "description": "Light weight job scheduler for Node.js",
+  "version": "1.0.2",
+  "description": "A lightweight, persistent job scheduler for Node.js using a MongoDB backend. Supports cron syntax, delayed jobs, and human-readable intervals.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "publishConfig": {
@@ -37,13 +37,28 @@
     "type": "git",
     "url": "git://github.com/marco-bertelli/chronos"
   },
+  "homepage": "https://github.com/marco-bertelli/chronos#readme",
   "keywords": [
     "job",
     "jobs",
     "cron",
-    "delayed",
+    "cronjob",
+    "task",
+    "schedule",
     "scheduler",
-    "runner"
+    "scheduling",
+    "runner",
+    "background",
+    "background-jobs",
+    "background-tasks",
+    "persistent",
+    "mongodb",
+    "queue",
+    "job-queue",
+    "delayed",
+    "recurring",
+    "nodejs",
+    "typescript"
   ],
   "author": "Simon Tretter, Maintained by Marco Bertelli",
   "license": "MIT",
