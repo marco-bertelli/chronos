@@ -1,32 +1,23 @@
-name: Run Test
+name: Run Docs
+
 on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Git checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v2
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
         with:
-          # npm cache files are stored in `~/.npm` on Linux/macOS
-          path: ~/.npm
-          key: ${{ runner.os }}-build-chronos-${{ hashFiles('**/package-lock.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-build-chronos-
-
-      - name: Update npm
-        run: npm -g install npm@latest
-
+          node-version: 20
+          cache: 'npm'
+          
       - name: Install Packages
-        run: npm install
+        run: npm ci
 
       - name: Docs
         run: npm run docs
