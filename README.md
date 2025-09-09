@@ -1,7 +1,7 @@
 # Chronos
 
 <p align="center">
-  <img src="https://rag-bot-prod.s3.eu-west-1.amazonaws.com/Gemini_Generated_Image_riqpyyriqpyyriqp.png" alt="Chronos" width="300" height="300">
+  <img src="https://rag-bot-prod.s3.eu-west-1.amazonaws.com/Gemini_Generated_Image_6rtujy6rtujy6rtu.png" alt="Chronos" width="300" height="300">
 </p>
 
 <p align="center">
