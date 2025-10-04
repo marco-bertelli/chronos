@@ -50,34 +50,34 @@ export class JobProcessor {
 			queuedJobs: !fullDetails
 				? this.jobQueue.length
 				: this.jobQueue.getQueue().map(job => ({
-					...job.toJson(),
-					canceled: job.getCanceledMessage()
-				})),
+						...job.toJson(),
+						canceled: job.getCanceledMessage()
+				  })),
 			runningJobs: !fullDetails
 				? this.runningJobs.length
 				: this.runningJobs.map(job => ({
-					...job.toJson(),
-					canceled: job.getCanceledMessage()
-				})),
+						...job.toJson(),
+						canceled: job.getCanceledMessage()
+				  })),
 			lockedJobs: !fullDetails
 				? this.lockedJobs.length
 				: this.lockedJobs.map(job => ({
-					...job.toJson(),
-					canceled: job.getCanceledMessage()
-				})),
+						...job.toJson(),
+						canceled: job.getCanceledMessage()
+				  })),
 			jobsToLock: !fullDetails
 				? this.jobsToLock.length
 				: this.jobsToLock.map(job => ({
-					...job.toJson(),
-					canceled: job.getCanceledMessage()
-				})),
+						...job.toJson(),
+						canceled: job.getCanceledMessage()
+				  })),
 			isLockingOnTheFly: this.isLockingOnTheFly
 		};
 	}
 
 	private nextScanAt = new Date();
 
-	private jobQueue: JobProcessingQueue = new JobProcessingQueue(this.chronos);
+	private jobQueue: JobProcessingQueue;
 
 	private runningJobs: JobWithId[] = [];
 
@@ -99,7 +99,10 @@ export class JobProcessor {
 		private totalLockLimit: number,
 		private processEvery: number
 	) {
+		this.jobQueue = new JobProcessingQueue(this.chronos);
+
 		log('creating interval to call processJobs every [%dms]', processEvery);
+
 		this.processInterval = setInterval(() => this.process(), processEvery);
 		this.process();
 	}
@@ -527,7 +530,8 @@ export class JobProcessor {
 
 								reject(
 									new Error(
-										`execution of '${job.attrs.name}' canceled, execution took more than ${this.chronos.definitions[job.attrs.name].lockLifetime
+										`execution of '${job.attrs.name}' canceled, execution took more than ${
+											this.chronos.definitions[job.attrs.name].lockLifetime
 										}ms. Call touch() for long running jobs to keep them alive.`
 									)
 								);
