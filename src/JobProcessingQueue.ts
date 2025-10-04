@@ -96,10 +96,10 @@ export class JobProcessingQueue {
 	returnNextConcurrencyFreeJob(
 		jobStatus: {
 			[jobName: string]:
-			| {
-				running: number;
-			}
-			| undefined;
+				| {
+						running: number;
+				  }
+				| undefined;
 		},
 		handledJobs: IJobParameters['_id'][]
 	): (JobWithId & { attrs: IJobParameters & { nextRunAt?: Date | null } }) | undefined {

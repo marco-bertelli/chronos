@@ -131,19 +131,19 @@ export class JobDbRepository {
 		 * Query used to find job to run
 		 */
 		const JOB_PROCESS_WHERE_QUERY: Filter<IJobParameters /* Omit<IJobParameters, 'lockedAt'> & { lockedAt?: Date | null } */> =
-		{
-			name: jobName,
-			disabled: { $ne: true },
-			$or: [
-				{
-					lockedAt: { $eq: null as any },
-					nextRunAt: { $lte: nextScanAt }
-				},
-				{
-					lockedAt: { $lte: lockDeadline }
-				}
-			]
-		};
+			{
+				name: jobName,
+				disabled: { $ne: true },
+				$or: [
+					{
+						lockedAt: { $eq: null as any },
+						nextRunAt: { $lte: nextScanAt }
+					},
+					{
+						lockedAt: { $lte: lockDeadline }
+					}
+				]
+			};
 
 		/**
 		 * Query used to set a job as locked
@@ -177,9 +177,10 @@ export class JobDbRepository {
 		this.collection = db.collection(collection);
 		if (log.enabled) {
 			log(
-				`connected with collection: ${collection}, collection size: ${typeof this.collection.estimatedDocumentCount === 'function'
-					? await this.collection.estimatedDocumentCount()
-					: '?'
+				`connected with collection: ${collection}, collection size: ${
+					typeof this.collection.estimatedDocumentCount === 'function'
+						? await this.collection.estimatedDocumentCount()
+						: '?'
 				}`
 			);
 		}
@@ -356,9 +357,10 @@ export class JobDbRepository {
 					}
 				);
 				log(
-					`findOneAndUpdate(${props.name}) with type "single" ${result.lastErrorObject?.updatedExisting
-						? 'updated existing entry'
-						: 'inserted new entry'
+					`findOneAndUpdate(${props.name}) with type "single" ${
+						result.lastErrorObject?.updatedExisting
+							? 'updated existing entry'
+							: 'inserted new entry'
 					}`
 				);
 				return this.processDbResult(job, result.value as IJobParameters<DATA>);

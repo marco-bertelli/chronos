@@ -72,7 +72,8 @@ export const computeFromInterval = (attrs: IJobParameters<any>): Date => {
 			attrs._id
 		);
 		throw new Error(
-			`failed to calculate nextRunAt due to invalid repeat interval (${attrs.repeatInterval}): ${error || 'no readable human interval'
+			`failed to calculate nextRunAt due to invalid repeat interval (${attrs.repeatInterval}): ${
+				error || 'no readable human interval'
 			}`
 		);
 	}
