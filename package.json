@@ -1,6 +1,6 @@
 {
   "name": "chronos-jobs",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A lightweight, persistent job scheduler for Node.js using a MongoDB backend. Supports cron syntax, delayed jobs, and human-readable intervals.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
