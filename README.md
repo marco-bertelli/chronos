@@ -20,7 +20,7 @@ it differs from the original version in following points:
 - plan to update the unit test's
 - plan to improve lib performance and have new idea's
 
-Documentation: (https://chronos-docs.vercel.app/)
+Documentation: https://chronos-docs.vercel.app/
 
 # Chronos offers
 
